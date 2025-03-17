@@ -1,0 +1,5 @@
+hardware-configuration.nix
+result
+secrets/*.hash
+secrets/*.key
+nixos.qcow2
