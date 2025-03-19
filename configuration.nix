@@ -5,6 +5,14 @@
 { config, lib, pkgs, ... }:
 
 {
+  environment.persistence."/persistent" = {
+    enable = true;  # NB: Defaults to true, not needed
+    hideMounts = true;
+    directories = [
+      "/usr/shared/ada-valley"
+      # { directory = "/mnt/shared/alice"; user = "alice"; mode = "u=rwx,g=rx,o="; }
+    ];
+  };
   # This tutorial focuses on testing NixOS configurations on a virtual machine. 
   # Therefore you will remove the reference to:
   # imports =
@@ -12,13 +20,15 @@
   #     ./hardware-configuration.nix
   #   ];
   #imports = [ <sops-nix/modules/sops> ];
+  # services.openssh.enable = true;
   sops.defaultSopsFile = ./secrets/keys.enc.yaml;
   # This is using an age key that is expected to already be in the filesystem
   # Note: If you are using Impermanence,
   # the key used for secret decryption (sops.age.keyFile, or the host SSH keys)
   # must be in a persisted directory, loaded early enough during boot.
-  sops.age.keyFile = "/nix/persist/var/lib/sops-nix/key.txt";
+  # sops.age.keyFile = "/nix/persist/var/lib/sops-nix/key.txt";
   #sops.age.keyFile = "/var/lib/sops-nix/key.txt";
+  sops.age.keyFile = "/nix/persist/var/lib/sops-nix/mk-password.key";
   # This will generate a new key if the key specified above does not exist
   # sops.age.generateKey = true;
   # This is the actual specification of the secrets.
@@ -84,7 +94,8 @@
   users.users.alice = {
     isNormalUser = true;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
-    hashedPasswordFile = config.sops.secrets.alice-password.path;
+    password = "123";
+    # hashedPasswordFile = config.sops.secrets.alice-password.path;
     packages = with pkgs; [
       tree
     ];
