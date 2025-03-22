@@ -1,5 +1,5 @@
 keys:
-  - &admin_mk age1fxrjjr86wcvypgkhgq63rz0uv04c6ss0glqyxh4w88a4gdfv5sys2s6vmk
+  - &admin_mk age1mrve8n8d5v8ra9alqz83dsghvghs3sa47wu95875gdj7hmd9c4qsj89tjf
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:

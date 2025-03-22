@@ -9,28 +9,40 @@
     enable = true;  # NB: Defaults to true, not needed
     hideMounts = true;
     directories = [
-      "/usr/shared/ada-valley"
-      # { directory = "/mnt/shared/alice"; user = "alice"; mode = "u=rwx,g=rx,o="; }
+      "/usr/share/ada-valley"
+      # { directory = "/mnt/share/alice"; user = "alice"; mode = "u=rwx,g=rx,o="; }
     ];
   };
+  systemd.services.mount-shared-directory = {
+    description = "Mount shared directory";
+    after = [ "local-fs.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.util-linux}/bin/mount -t 9p -o trans=virtio,version=9p2000.L hostshared /persistent/usr/share/ada-valley";
+      RemainAfterExit = true;
+    };
+    # Optionally, add a dependency on the virtio-fs module
+    # before = [ "virtiofsd.service" ];
+  };
+
   # This tutorial focuses on testing NixOS configurations on a virtual machine. 
   # Therefore you will remove the reference to:
   # imports =
   #   [ # Include the results of the hardware scan.
   #     ./hardware-configuration.nix
   #   ];
-  #imports = [ <sops-nix/modules/sops> ];
+
   # services.openssh.enable = true;
   sops.defaultSopsFile = ./secrets/keys.enc.yaml;
   # This is using an age key that is expected to already be in the filesystem
   # Note: If you are using Impermanence,
   # the key used for secret decryption (sops.age.keyFile, or the host SSH keys)
   # must be in a persisted directory, loaded early enough during boot.
-  # sops.age.keyFile = "/nix/persist/var/lib/sops-nix/key.txt";
-  #sops.age.keyFile = "/var/lib/sops-nix/key.txt";
-  sops.age.keyFile = "/nix/persist/var/lib/sops-nix/mk-password.key";
-  # This will generate a new key if the key specified above does not exist
-  # sops.age.generateKey = true;
+  sops.age.keyFile = "/persistent/usr/share/ada-valley/age-password.txt";
+  # sops.age.keyFile = "/persistent/mk-password.key";
+  # If true, this will generate a new key if the key specified above does not exist
+  sops.age.generateKey = false;
   # This is the actual specification of the secrets.
   sops.secrets.alice-password = {};
 
@@ -95,7 +107,7 @@
     isNormalUser = true;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     password = "123";
-    # hashedPasswordFile = config.sops.secrets.alice-password.path;
+    # password = config.sops.secrets.alice-password.path;
     packages = with pkgs; [
       tree
     ];
