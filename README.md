@@ -32,13 +32,13 @@ nix-shell -p age --run "age-keygen -o /usr/share/ada-valley/age-password.key"
 If you add a new host to your .sops.yaml file, you will need to update the keys for all secrets that are used by the new host. This can be done like so:
 
 ```bash
-nix-shell -p sops --run "sops updatekeys ./secrets/keys.enc.yaml"
+nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-password.key; sops updatekeys ./secrets/keys.enc.yaml"
 ```
 
 1.b Only the first time, Open the file and add the required keys:
 ```bash
 # ex. alice-password: $(mkpasswd -m sha-512 $YOUR_SECRET_PASSWORD > ./secrets/alice-password.hash)
-nix-shell -p sops --run "sops ./secrets/keys.enc.yaml"
+nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-password.key; sops ./secrets/keys.enc.yaml"
 ```
 
 1.c  In case you need to decrypt the file:
@@ -60,6 +60,12 @@ nix build .#nixosConfigurations.nixos-vm.config.system.build.vm
 
 ```bash
 QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared ; reset
+```
+
+4. Run outside the VM
+
+```bash
+[alice@nixos:~]$ sudo poweroff
 ```
 
 ## Update the VM
