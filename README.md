@@ -46,7 +46,45 @@ nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-pass
 nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-password.key; sops -d ./secrets/keys.enc.yaml"
 ```
 
-2. Creating a QEMU based virtual machine from a NixOS configuration
+2. A) Create your network bridge (linux)
+
+Look at your network interfaces and create a bridge for the VM
+```bash
+ip -br a # Look for something like "enpXs0"
+```
+
+```bash
+sudo ip link add br0 type bridge
+sudo ip link set dev br0 up
+sudo ip link set $YOUR_NETWORK_INTERFACE master br0
+```
+
+Lastly, modify /etc/qemu/bridge.conf
+```
+allow br0
+```
+
+2. B) Create you network bridge on nix
+
+At your /etc/nixos/configuration.nix
+```
+networking.interfaces.enp7s0.useDHCP = false;
+networking.bridges.br0.interfaces = ["enp7s0"]; # Use your interface!
+  networking.interfaces.br0 = {
+    useDHCP = true;
+  };
+```
+
+```bash
+systemctl start br0-netdev.service
+```
+
+Lastly, modify /etc/qemu/bridge.conf
+```
+allow br0
+```
+
+3. Creating a QEMU based virtual machine from a NixOS configuration
     
 ```bash
 # The old way:
@@ -56,13 +94,13 @@ nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-pass
 nix build .#nixosConfigurations.nixos-vm.config.system.build.vm
 ```
 
-3. Running the virtual machine
+4. Running the virtual machine
 
 ```bash
-QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared ; reset
+QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev bridge,br=br0,id=net0 -device virtio-net-pci,netdev=net0; reset
 ```
 
-4. Run outside the VM
+5. Run outside the VM
 
 ```bash
 [alice@nixos:~]$ sudo poweroff
