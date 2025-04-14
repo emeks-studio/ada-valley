@@ -57,23 +57,44 @@ ip -br a # Look for something like "enpXs0"
 sudo ip link add br0 type bridge
 sudo ip link set dev br0 up
 sudo ip link set $YOUR_NETWORK_INTERFACE master br0
-```
 
-Lastly, modify /etc/qemu/bridge.conf
-```
-allow br0
+modprobe tun tap
+sudo ip tuntap add dev tap0 mode tap
+sudo ip link set tap0 master br0
+sudo ip link set tap0 up
 ```
 
 2. B) Create you network bridge on nix
 
 At your /etc/nixos/configuration.nix
 ```
-networking.interfaces.enp7s0.useDHCP = false;
-networking.bridges.br0.interfaces = ["enp7s0"]; # Use your interface!
-  networking.interfaces.br0 = {
-    useDHCP = true;
+  systemd.network.enable = true;
+  systemd.network.netdevs = {
+    "42-br0" = {
+      netdevConfig.Kind = "bridge";
+      netdevConfig.Name = "br0";
+    };
+    "43-tap0" = {
+      netdevConfig.Kind = "tap";
+      netdevConfig.Name = "tap0";
+    };
+  };
+  systemd.network.networks = {
+    "44-br0" = {
+      matchConfig.Name = "br0";
+      networkConfig.DHCP = "yes";
+    };
+   "45-tap0" = {
+     matchConfig.Name = "tap0";
+     networkConfig.Bridge = "br0";
+    };
+   "46-$YOUR_NETWORK_INTERFACE" = {
+     matchConfig.Name = "$YOUR_NETWORK_INTERFACE";
+     networkConfig.Bridge = "br0";
+   };
   };
 ```
+^ Ref. https://nixos.wiki/wiki/Systemd-networkd
 
 ```bash
 systemctl start br0-netdev.service
@@ -97,7 +118,7 @@ nix build .#nixosConfigurations.nixos-vm.config.system.build.vm
 4. Running the virtual machine
 
 ```bash
-QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev bridge,br=br0,id=net0 -device virtio-net-pci,netdev=net0; reset
+QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device virtio-net-pci,netdev=net0;
 ```
 
 5. Run outside the VM
