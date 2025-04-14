@@ -68,6 +68,7 @@ sudo ip link set tap0 up
 
 At your /etc/nixos/configuration.nix
 ```
+  networking.networkmanager.unmanaged = [ "$YOUR_ETHERNET_NETWORK_INTERFACE"];
   systemd.network.enable = true;
   systemd.network.netdevs = {
     "42-br0" = {
@@ -88,8 +89,8 @@ At your /etc/nixos/configuration.nix
      matchConfig.Name = "tap0";
      networkConfig.Bridge = "br0";
     };
-   "46-$YOUR_NETWORK_INTERFACE" = {
-     matchConfig.Name = "$YOUR_NETWORK_INTERFACE";
+   "46-$YOUR_ETHERNET_NETWORK_INTERFACE" = {
+     matchConfig.Name = "$YOUR_ETHERNET_NETWORK_INTERFACE";
      networkConfig.Bridge = "br0";
    };
   };
@@ -97,12 +98,9 @@ At your /etc/nixos/configuration.nix
 ^ Ref. https://nixos.wiki/wiki/Systemd-networkd
 
 ```bash
-systemctl start br0-netdev.service
-```
-
-Lastly, modify /etc/qemu/bridge.conf
-```
-allow br0
+# Useful for monitoring the network
+networkctl
+ip -br a
 ```
 
 3. Creating a QEMU based virtual machine from a NixOS configuration
@@ -121,10 +119,18 @@ nix build .#nixosConfigurations.nixos-vm.config.system.build.vm
 QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device virtio-net-pci,netdev=net0;
 ```
 
-5. Run outside the VM
+5. A) Run inside/outside the VM
 
 ```bash
+# Log-in by using alice credentials
 [alice@nixos:~]$ sudo poweroff
+```
+
+5. B) Use ssh to enter the VM
+
+```
+# Make sure you are not connected to your wifi network. You need to be connected to the ethernet network.
+ssh alice@VM_IP
 ```
 
 ## Update the VM
@@ -133,6 +139,9 @@ QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev loc
 
 ```bash 
 rm nixos.qcow2
+
+# In case you enter the VM using ssh, you will need to remove the ssh keys
+ssh-keygen -R VM_IP -f /home/$YOUR_USER/.ssh/known_hosts
 ```
 
 2. Run step 2 from Development section again!
