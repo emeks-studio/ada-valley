@@ -24,6 +24,10 @@
     ];
   };
 
+  environment.systemPackages = with pkgs; [
+    cardano-cli
+  ];
+  
   # This tutorial focuses on testing NixOS configurations on a virtual machine. 
   # Therefore you will remove the reference to:
   # imports =
@@ -106,9 +110,11 @@
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     # password = "123";
     hashedPasswordFile = config.sops.secrets.alice-password.path;
-    packages = with pkgs; [
-      tree
-    ];
+    packages = []; # with pkgs; [
+      #tree
+      #cardano-node
+      # cardano-cli
+    #];
   };
 
   # programs.firefox.enable = true;
