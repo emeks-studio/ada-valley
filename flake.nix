@@ -53,6 +53,7 @@
                   # iohkNix.overlays.utils
                   (prev: final: {
                     cardano-cli = cardano-node.packages.${final.system}.cardano-cli;
+                    cardano-node = cardano-node.packages.${final.system}.cardano-node;
                   })
               ];
             }
