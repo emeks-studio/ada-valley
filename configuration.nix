@@ -24,6 +24,11 @@
     ];
   };
 
+  # Can these configs files be modified in subsequents runs? should be moved them into persistent storage?
+  environment.etc."cardano-configs-testnet-preview" = {
+    source = pkgs.cardano-configs-testnet-preview;
+  };
+
   # This tutorial focuses on testing NixOS configurations on a virtual machine. 
   # Therefore you will remove the reference to:
   # imports =

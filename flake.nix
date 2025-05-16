@@ -55,6 +55,7 @@
                     cardano-cli = cardano-node.packages.${final.system}.cardano-cli;
                     cardano-node = cardano-node.packages.${final.system}.cardano-node;
                   })
+                  (import ./overlays/cardano-configs-testnet-preview.nix)
               ];
             }
             ({ config, pkgs, ...}: {
