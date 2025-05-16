@@ -8,6 +8,7 @@ final: prev: {
       echo "Installing another custom app..."
       mkdir -p $out
       cp *.json $out
+      chmod 644 $out/*.json
     '';
     };
 }

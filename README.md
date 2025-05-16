@@ -119,6 +119,18 @@ nix build .#nixosConfigurations.nixos-vm.config.system.build.vm
 QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device virtio-net-pci,netdev=net0;
 ```
 
+TODO: Make this a systemd service?
+Experiments:
+```
+cardano-node run \
+   --topology /etc/cardano-configs-testnet-preview/topology.json \
+   --database-path /persistent/usr/share/ada-valley/cardano-db \
+   --socket-path /persistent/usr/share/ada-valley/cardano-db/node.socket \
+   --host-addr 127.0.0.1 \
+   --port 3001 \
+   --config /etc/cardano-configs-testnet-preview/config.json
+```
+
 5. A) Run inside/outside the VM
 
 ```bash
