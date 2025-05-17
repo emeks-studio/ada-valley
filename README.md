@@ -116,19 +116,35 @@ nix build .#nixosConfigurations.nixos-vm.config.system.build.vm
 4. Running the virtual machine
 
 ```bash
-QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device virtio-net-pci,netdev=net0;
+QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device virtio-net-pci,netdev=net0 -m 8192;
 ```
 
 TODO: Make this a systemd service?
 Experiments:
 ```
+# Run the node
 cardano-node run \
    --topology /etc/cardano-configs-testnet-preview/topology.json \
    --database-path /persistent/usr/share/ada-valley/cardano-db \
    --socket-path /persistent/usr/share/ada-valley/cardano-db/node.socket \
-   --host-addr 127.0.0.1 \
+   --host-addr 192.168.100.78 \
    --port 3001 \
    --config /etc/cardano-configs-testnet-preview/config.json
+```
+
+```
+# Check sync progress
+cardano-cli query tip --testnet-magic 2 --socket-path /usr/share/ada-valley/cardano-db/node.socket 
+{
+    "block": 11137,
+    "epoch": 2,
+    "era": "Alonzo",
+    "hash": "924756fb4b3e974525966982b8cbbdd71c6b2bebd4c1e7e2c783647bcb7071de",
+    "slot": 221974,
+    "slotInEpoch": 49174,
+    "slotsToEpochEnd": 37226,
+    "syncProgress": "0.28"
+}
 ```
 
 5. A) Run inside/outside the VM
