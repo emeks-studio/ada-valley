@@ -148,6 +148,24 @@
     };
   };
 
+  # Ref. https://nixos.org/manual/nixos/stable/#module-services-prometheus-exporters
+  # Access via: http://192.168.100.78:9100/metrics
+  services.prometheus.exporters.node = {
+    enable = true;
+    port = 9100;
+    enabledCollectors = [
+      "logind"
+      "systemd"
+    ];
+    disabledCollectors = [
+      "textfile"
+    ];
+    openFirewall = true;
+    # TODO: Review which flags we could add!
+    # extraFlags = [ "--collector.ethtool" "--collector.softirqs" "--collector.tcpstat" "--collector.wifi" ];
+    firewallFilter = "-i br0 -p tcp -m tcp --dport 9100";
+  };
+
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ 22 ];
   # networking.firewall.allowedUDPPorts = [ ... ];
