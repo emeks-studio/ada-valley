@@ -150,6 +150,8 @@
 
   # Ref. https://nixos.org/manual/nixos/stable/#module-services-prometheus-exporters
   # Access via: http://192.168.100.78:9100/metrics
+  # and for cardano-node: http://192.168.100.78:12798/metrics
+  # ^ FIXME: For some reason this is not working from the "outside"
   services.prometheus.exporters.node = {
     enable = true;
     port = 9100;
@@ -163,14 +165,23 @@
     openFirewall = true;
     # TODO: Review which flags we could add!
     # extraFlags = [ "--collector.ethtool" "--collector.softirqs" "--collector.tcpstat" "--collector.wifi" ];
-    firewallFilter = "-i br0 -p tcp -m tcp --dport 9100";
   };
 
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ 22 ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  networking.firewall.enable = false;
+  # Open ports in the firewall Or disable the firewall altogether.
+  networking.firewall = {
+    enable = true;
+    # Open ports in the firewall.
+    allowedTCPPorts = [ 22 ];
+    # allowedUDPPorts = [ ... ];
+    # Add your custom iptables rule here
+    extraCommands = ''
+      ${lib.getExe' pkgs.iptables "iptables"} -A INPUT -i br0 -p tcp -m tcp --dport 80 -j ACCEPT
+      ${lib.getExe' pkgs.iptables "iptables"} -A INPUT -i br0 -p tcp -m tcp --dport 9100 -j ACCEPT
+      ${lib.getExe' pkgs.iptables "iptables"} -A INPUT -i br0 -p tcp -m tcp --dport 12798 -j ACCEPT
+    '';
+    # If you have specific output rules you also need to allow, you can add them to extraCommandsOutput:
+    # extraCommandsOutput = "";
+  };
 
   # Copy the NixOS configuration file and link it from the resulting system
   # (/run/current-system/configuration.nix). This is useful in case you
