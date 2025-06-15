@@ -151,7 +151,6 @@
   # Ref. https://nixos.org/manual/nixos/stable/#module-services-prometheus-exporters
   # Access via: http://192.168.100.78:9100/metrics
   # and for cardano-node: http://192.168.100.78:12798/metrics
-  # ^ FIXME: For some reason this is not working from the "outside"
   services.prometheus.exporters.node = {
     enable = true;
     port = 9100;
@@ -167,18 +166,39 @@
     # extraFlags = [ "--collector.ethtool" "--collector.softirqs" "--collector.tcpstat" "--collector.wifi" ];
   };
 
+  # Prometheus Server (TODO: Move it to a dedicate server)
+  # Access via: http://192.168.100.78:9090
+  services.prometheus = {
+      enable = true;
+      port = 9090;
+      globalConfig.scrape_interval = "15s"; # Set the scrape interval to every 15 seconds. Default is every 1 minute ("1m").
+      globalConfig.evaluation_interval = "15s"; # Evaluate rules every 15 seconds. The default is every 1 minute ("1m").
+      scrapeConfigs = [
+        {
+          # To scrape data from a node exporter to monitor your Linux host metrics.
+          job_name = "node-exporter";
+          static_configs = [{
+            targets = [ "192.168.100.78:${toString config.services.prometheus.exporters.node.port}" ];
+          }];
+        }
+        {
+          # To scrape data from the Cardano node
+          job_name = "cardano-node";
+          static_configs = [{
+            targets = [ "192.168.100.78:12798" ];
+          }];
+        }
+      ];
+   };
+
   # Open ports in the firewall Or disable the firewall altogether.
   networking.firewall = {
     enable = true;
     # Open ports in the firewall.
-    allowedTCPPorts = [ 22 ];
+    allowedTCPPorts = [ 22 80 9090 9100 12798];
     # allowedUDPPorts = [ ... ];
     # Add your custom iptables rule here
-    extraCommands = ''
-      ${lib.getExe' pkgs.iptables "iptables"} -A INPUT -i br0 -p tcp -m tcp --dport 80 -j ACCEPT
-      ${lib.getExe' pkgs.iptables "iptables"} -A INPUT -i br0 -p tcp -m tcp --dport 9100 -j ACCEPT
-      ${lib.getExe' pkgs.iptables "iptables"} -A INPUT -i br0 -p tcp -m tcp --dport 12798 -j ACCEPT
-    '';
+    # extraCommands = "";
     # If you have specific output rules you also need to allow, you can add them to extraCommandsOutput:
     # extraCommandsOutput = "";
   };
