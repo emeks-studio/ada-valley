@@ -38,10 +38,14 @@
     };
   };
 
-  outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node }: {
+  outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node }:
+    let 
+      vars = import ./vars.nix;
+    in {
     nixosConfigurations = {
       nixos-vm = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
+        specialArgs = { inherit vars; };
         modules = [ 
             {  nixpkgs.overlays = [
                   # Crypto needs to come before haskell.nix. FIXME: _THIS_IS_BAD_
@@ -60,7 +64,7 @@
             }
             ({ config, pkgs, ...}: {
                 # Move fileSystems and virtualisation to a separate module!
-                fileSystems."/usr/share/ada-valley" = {
+                fileSystems."${vars.sharedFolder}" = {
                   device = "hostshared";
                   neededForBoot = true;
                   fsType = "9p";
@@ -73,5 +77,5 @@
         ];
       };
     };
-  };
+    };
 }
