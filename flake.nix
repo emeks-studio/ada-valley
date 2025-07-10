@@ -41,10 +41,12 @@
   outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node }:
     let 
       vars = import ./vars.nix;
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
     in {
     nixosConfigurations = {
       nixos-vm = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
+        system = "${system}";
         specialArgs = { inherit vars; };
         modules = [ 
             {  nixpkgs.overlays = [
@@ -64,7 +66,7 @@
             }
             ({ config, pkgs, ...}: {
                 # Move fileSystems and virtualisation to a separate module!
-                fileSystems."${vars.sharedFolder}" = {
+                fileSystems."${vars.vm.sharedFolder}" = {
                   device = "hostshared";
                   neededForBoot = true;
                   fsType = "9p";
@@ -77,5 +79,53 @@
         ];
       };
     };
+
+    packages.${system} = {
+      start-vm = pkgs.writeShellApplication {
+        name = "start-vm";
+        runtimeInputs = [pkgs.qemu_kvm];
+        text = ''
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          VM_RUNNER="./result/bin/run-nixos-vm"
+
+          if [ ! -x "$VM_RUNNER" ] ; then
+            echo "Error VM not found"
+            echo "Try to generate it with: nix build .#nixosConfigurations.vm.config.system.build.vm"
+            exit 1
+          fi
+
+          QEMU_KERNEL_PARAMS=console=ttyS0 \
+          "$VM_RUNNER" \
+            -nographic \
+            -fsdev local,id=fsdev0,path=${vars.vm.sharedFolder},security_model=none \
+            -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared \
+            -netdev tap,id=net0,ifname=${vars.vm.tapInterface},script=no,downscript=no \
+            -device virtio-net-pci,netdev=net0 -m ${vars.vm.vmMemory}
+        '';
+      };
+      help = pkgs.writeShellApplication {
+        name = "help";
+        text = ''
+          echo
+          echo "Available commands:"
+          echo "  nix build .#nixosConfigurations.nixos-vm.config.system.build.vm  - Build the NixOS VM"
+          echo "  nix run .#start-vm                                               - Run the VM with QEMU"
+          echo "  nix run .#help                                                   - Show this help message"
+        '';
+      };
     };
+
+    apps.${system} = {
+      default = {
+          type = "app";
+          program = "${self.packages.${system}.start-vm}/bin/start-vm";
+      };
+      help = {
+        type = "app";
+        program = "${self.packages.${system}.help}/bin/help";
+      };
+    };
+  };
 }

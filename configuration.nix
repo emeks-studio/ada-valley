@@ -8,8 +8,8 @@
   system.activationScripts.mountSharedDirectory = { 
     text =''
       printf "mounting shared directory\n"
-      mkdir -p /persistent${vars.sharedFolder}
-      mount -t 9p -o trans=virtio,version=9p2000.L hostshared /persistent${vars.sharedFolder}
+      mkdir -p /persistent${vars.vm.sharedFolder}
+      mount -t 9p -o trans=virtio,version=9p2000.L hostshared /persistent${vars.vm.sharedFolder}
     '';
     deps = ["specialfs"]; 
   };
@@ -19,7 +19,7 @@
     enable = true;  # NB: Defaults to true, not needed
     hideMounts = true;
     directories = [
-      "${vars.sharedFolder}"
+      "${vars.vm.sharedFolder}"
       # { directory = "/mnt/share/alice"; user = "alice"; mode = "u=rwx,g=rx,o="; }
     ];
   };
@@ -42,7 +42,7 @@
   # Note: If you are using Impermanence,
   # the key used for secret decryption (sops.age.keyFile, or the host SSH keys)
   # must be in a persisted directory, loaded early enough during boot.
-  sops.age.keyFile = "/persistent${vars.sharedFolder}/age-password.key";
+  sops.age.keyFile = "/persistent${vars.vm.sharedFolder}/age-password.key";
   # sops.age.keyFile = "/persistent/mk-password.key";
   # If true, this will generate a new key if the key specified above does not exist
   sops.age.generateKey = false;
