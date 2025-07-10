@@ -135,6 +135,35 @@
   #   enableSSHSupport = true;
   # };
 
+  # List of systemd services available
+  systemd.services.cardano-node = let
+    cardanoStartupScript = pkgs.writeShellApplication {
+      name = "start-cardano";
+      text = ''
+      INTERFACE="eth1"
+      IP=$(${pkgs.iproute2}/bin/ip -o -4 addr show dev "$INTERFACE" | grep -oP "(?<=inet\s)\d+(\.\d+){3}")
+      exec ${pkgs.cardano-node}/bin/cardano-node run \
+        --topology /etc/cardano-configs-testnet-preview/topology.json \
+        --database-path /persistent${vars.vm.sharedFolder}/cardano-db \
+        --socket-path /persistent${vars.vm.sharedFolder}/cardano-db/node.socket \
+        --host-addr "$IP" \
+        --port 3001 \
+        --config /etc/cardano-configs-testnet-preview/config.json
+    '';
+  };
+  in {
+    description = "Cardano node startup";
+    wantedBy = ["multi-user.target"];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    serviceConfig = {
+      Type = "simple";
+      User = "alice";
+      Group = "users";
+      ExecStart = "${cardanoStartupScript}/bin/start-cardano";
+    };
+    path = [ pkgs.cardano-node pkgs.iproute2 ];
+  };
   # List services that you want to enable:
 
   # Enable the OpenSSH daemon.

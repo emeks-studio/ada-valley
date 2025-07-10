@@ -128,19 +128,25 @@ The full list of commands are:
 
 
 ## 4. Cardano Node 
-TODO: Make this a systemd service?
-Experiments:
-```
-# Run the node
-cardano-node run \
-   --topology /etc/cardano-configs-testnet-preview/topology.json \
-   --database-path /persistent/usr/share/ada-valley/cardano-db \
-   --socket-path /persistent/usr/share/ada-valley/cardano-db/node.socket \
-   --host-addr 192.168.100.78 \
-   --port 3001 \
-   --config /etc/cardano-configs-testnet-preview/config.json
-```
+The Cardano node is configured in the configuration.nix as a systemd service called **cardano-node**, it will automatically starts on system startup, it will run the cardano node with these parameters:
+ - topology: the one specified in the topology.json
+ - database-path: will use the path defined in the vars.nix **vm.sharedFolder** variable
+ - socket-path: will use the node.socket from the cardano-db stored into the **vm.sharedFOlder** variable
+ - host-addr: will use the vm's interface defined as **eth1**
+ - port: default 3001 can be parametrized
+ - config: config.json 
+  
 
+### Check status:
+```systemctl status cardano-node```
+
+### Startup
+```systemctl start cardano-node```
+
+### View logs
+```journalctl -fu cardano-node```
+
+### Check progress
 ```
 # Check sync progress
 cardano-cli query tip --testnet-magic 2 --socket-path /usr/share/ada-valley/cardano-db/node.socket 
