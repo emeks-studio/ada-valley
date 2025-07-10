@@ -17,7 +17,7 @@ sudo mkdir -p /usr/share/ada-valley
 sudo chmod -R 777 /usr/share/ada-valley
 ```
 
-1. Setup your password
+## 1. Setup your password
 
 ```bash
 # Generate your age key!
@@ -45,6 +45,8 @@ nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-pass
 ```bash
 nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-password.key; sops -d ./secrets/keys.enc.yaml"
 ```
+
+## 2. Network Setup
 
 2. A) Create your network bridge (linux)
 
@@ -103,22 +105,29 @@ networkctl
 ip -br a
 ```
 
-3. Creating a QEMU based virtual machine from a NixOS configuration
-    
-```bash
-# The old way:
-# nix-build '<nixpkgs/nixos>' -A vm -I nixpkgs=channel:nixos-24.11 -I nixos-config=./configuration.nix
+## 3. Interacting with build package
 
-# with flakes:
-nix build .#nixosConfigurations.nixos-vm.config.system.build.vm
+The flake provides a help command to view the options available in the package
+
+```nix
+  nix run .#help
 ```
 
-4. Running the virtual machine
+The full list of commands are:
 
-```bash
-QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device virtio-net-pci,netdev=net0 -m 8192;
-```
+### Build
 
+ - `nix build .#nixosConfigurations.nixos-vm.config.system.build.vm`
+
+### Execution
+
+  - `nix run .#help` help command
+  - `nix run .#show` To view how the vm will be started
+  - `nix run .#start-vm` or simply `nix run .`
+
+
+
+## 4. Cardano Node 
 TODO: Make this a systemd service?
 Experiments:
 ```

@@ -42,6 +42,7 @@
     let 
       vars = import ./vars.nix;
       system = "x86_64-linux";
+      vm_runner = "./result/bin/run-nixos-vm";
       pkgs = nixpkgs.legacyPackages.${system};
     in {
     nixosConfigurations = {
@@ -88,7 +89,7 @@
           #!/usr/bin/env bash
           set -euo pipefail
 
-          VM_RUNNER="./result/bin/run-nixos-vm"
+          VM_RUNNER="${vm_runner}"
 
           if [ ! -x "$VM_RUNNER" ] ; then
             echo "Error VM not found"
@@ -113,6 +114,23 @@
           echo "  nix build .#nixosConfigurations.nixos-vm.config.system.build.vm  - Build the NixOS VM"
           echo "  nix run .#start-vm                                               - Run the VM with QEMU"
           echo "  nix run .#help                                                   - Show this help message"
+          echo "  nix run .#show                                                   - Show vm startup command"
+        '';
+      };
+      show = pkgs.writeShellApplication {
+        name = "show";
+        text = ''
+          echo
+          echo "Starting VM with the following variables"
+          echo "
+            QEMU_KERNEL_PARAMS=console=ttyS0 \
+            ${vm_runner} \
+            -nographic \
+            -fsdev local,id=fsdev0,path=${vars.vm.sharedFolder},security_model=none \
+            -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared \
+            -netdev tap,id=net0,ifname=${vars.vm.tapInterface},script=no,downscript=no \
+            -device virtio-net-pci,netdev=net0 -m ${vars.vm.vmMemory}
+          "
         '';
       };
     };
@@ -125,6 +143,10 @@
       help = {
         type = "app";
         program = "${self.packages.${system}.help}/bin/help";
+      };
+      show = {
+        type = "app";
+        program = "${self.packages.${system}.show}/bin/show";
       };
     };
   };
