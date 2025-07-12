@@ -1,7 +1,7 @@
 {
   vm = {
-    sharedFolder = "/FOLDER/SHARED/PATH";
+    sharedFolder = "/usr/share/ada-valley";
     vmMemory = "8192";
-    tapInterface = "TAP_INTERFACE";
+    tapInterface = "tap0";
   }
 }
