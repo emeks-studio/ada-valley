@@ -117,7 +117,7 @@ The full list of commands are:
 
 ### Build
 
- - `nix build .#nixosConfigurations.nixos-vm.config.system.build.vm`
+ - `nix build .#nixosConfigurations.nixos-vm.config.system.build.vm --override-input varsDirectory path:./vars/local`
 
 ### Execution
 

@@ -1150,7 +1150,8 @@
         "haskellNix": "haskellNix",
         "impermanence": "impermanence",
         "nixpkgs": "nixpkgs_4",
-        "sops-nix": "sops-nix"
+        "sops-nix": "sops-nix",
+        "varsDirectory": "varsDirectory"
       }
     },
     "secp256k1": {
@@ -1313,6 +1314,19 @@
         "owner": "numtide",
         "repo": "flake-utils",
         "type": "github"
+      }
+    },
+    "varsDirectory": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1,
+        "narHash": "sha256-trhUVDpIXMzGEFwpg9CV2p4lypMxsVk/3ohGMD/TIUU=",
+        "path": "./vars/template",
+        "type": "path"
+      },
+      "original": {
+        "path": "./vars/template",
+        "type": "path"
       }
     },
     "yants": {

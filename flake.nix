@@ -11,6 +11,12 @@
       flake = false;
     };
 
+    varsDirectory = {
+      type = "path";
+      path = "./vars/template";
+      flake = false;
+    };
+
     haskellNix = {
       # GHC 8.10.7 cross compilation for windows is broken in newer versions of haskell.nix.
       # Unpin this once we no longer need GHC 8.10.7.
@@ -38,9 +44,9 @@
     };
   };
 
-  outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node }:
+  outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node, varsDirectory }:
     let 
-      vars = import ./vars.nix;
+      vars = import "${varsDirectory}/vars.nix";
       system = "x86_64-linux";
       vm_runner = "./result/bin/run-nixos-vm";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -111,10 +117,10 @@
         text = ''
           echo
           echo "Available commands:"
-          echo "  nix build .#nixosConfigurations.nixos-vm.config.system.build.vm  - Build the NixOS VM"
-          echo "  nix run .#start-vm                                               - Run the VM with QEMU"
-          echo "  nix run .#help                                                   - Show this help message"
-          echo "  nix run .#show                                                   - Show vm startup command"
+          echo "  nix build .#nixosConfigurations.nixos-vm.config.system.build.vm --override-input varsFile path:./vars.nix  - Build the NixOS VM"
+          echo "  nix run .#start-vm                                                                                         - Run the VM with QEMU"
+          echo "  nix run .#help                                                                                             - Show this help message"
+          echo "  nix run .#show                                                                                             - Show vm startup command"
         '';
       };
       show = pkgs.writeShellApplication {
