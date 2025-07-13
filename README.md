@@ -17,7 +17,7 @@ sudo mkdir -p /usr/share/ada-valley
 sudo chmod -R 777 /usr/share/ada-valley
 ```
 
-1. Setup your password
+## 1. Setup your password
 
 ```bash
 # Generate your age key!
@@ -45,6 +45,8 @@ nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-pass
 ```bash
 nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-password.key; sops -d ./secrets/keys.enc.yaml"
 ```
+
+## 2. Network Setup
 
 2. A) Create your network bridge (linux)
 
@@ -103,35 +105,48 @@ networkctl
 ip -br a
 ```
 
-3. Creating a QEMU based virtual machine from a NixOS configuration
-    
-```bash
-# The old way:
-# nix-build '<nixpkgs/nixos>' -A vm -I nixpkgs=channel:nixos-24.11 -I nixos-config=./configuration.nix
+## 3. Interacting with build package
 
-# with flakes:
-nix build .#nixosConfigurations.nixos-vm.config.system.build.vm
+The flake provides a help command to view the options available in the package
+
+```nix
+  nix run .#help
 ```
 
-4. Running the virtual machine
+The full list of commands are:
 
-```bash
-QEMU_KERNEL_PARAMS=console=ttyS0 ./result/bin/run-nixos-vm -nographic -fsdev local,id=fsdev0,path=/usr/share/ada-valley,security_model=none -device virtio-9p-pci,fsdev=fsdev0,mount_tag=hostshared -netdev tap,id=net0,ifname=tap0,script=no,downscript=no -device virtio-net-pci,netdev=net0 -m 8192;
-```
+### Build
 
-TODO: Make this a systemd service?
-Experiments:
-```
-# Run the node
-cardano-node run \
-   --topology /etc/cardano-configs-testnet-preview/topology.json \
-   --database-path /persistent/usr/share/ada-valley/cardano-db \
-   --socket-path /persistent/usr/share/ada-valley/cardano-db/node.socket \
-   --host-addr 192.168.100.78 \
-   --port 3001 \
-   --config /etc/cardano-configs-testnet-preview/config.json
-```
+ - `nix build .#nixosConfigurations.nixos-vm.config.system.build.vm --override-input varsFilePath path:./vars.nix`
 
+### Execution
+
+  - `nix run .#help` help command
+  - `nix run .#show` To view how the vm will be started
+  - `nix run .#start-vm` or simply `nix run .`
+
+
+
+## 4. Cardano Node 
+The Cardano node is configured in the configuration.nix as a systemd service called **cardano-node**, it will automatically starts on system startup, it will run the cardano node with these parameters:
+ - topology: the one specified in the topology.json
+ - database-path: will use the path defined in the vars.nix **vm.sharedFolder** variable
+ - socket-path: will use the node.socket from the cardano-db stored into the **vm.sharedFOlder** variable
+ - host-addr: will use the vm's interface defined as **eth1**
+ - port: default 3001 can be parametrized
+ - config: config.json 
+  
+
+### Check status:
+```systemctl status cardano-node```
+
+### Startup
+```systemctl start cardano-node```
+
+### View logs
+```journalctl -fu cardano-node```
+
+### Check progress
 ```
 # Check sync progress
 cardano-cli query tip --testnet-magic 2 --socket-path /usr/share/ada-valley/cardano-db/node.socket 

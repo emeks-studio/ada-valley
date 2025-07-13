@@ -2,14 +2,14 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, vars,... }:
 
 {
   system.activationScripts.mountSharedDirectory = { 
     text =''
       printf "mounting shared directory\n"
-      mkdir -p /persistent/usr/share/ada-valley
-      mount -t 9p -o trans=virtio,version=9p2000.L hostshared /persistent/usr/share/ada-valley
+      mkdir -p /persistent${vars.vm.sharedFolder}
+      mount -t 9p -o trans=virtio,version=9p2000.L hostshared /persistent${vars.vm.sharedFolder}
     '';
     deps = ["specialfs"]; 
   };
@@ -19,7 +19,7 @@
     enable = true;  # NB: Defaults to true, not needed
     hideMounts = true;
     directories = [
-      "/usr/share/ada-valley"
+      "${vars.vm.sharedFolder}"
       # { directory = "/mnt/share/alice"; user = "alice"; mode = "u=rwx,g=rx,o="; }
     ];
   };
@@ -42,7 +42,7 @@
   # Note: If you are using Impermanence,
   # the key used for secret decryption (sops.age.keyFile, or the host SSH keys)
   # must be in a persisted directory, loaded early enough during boot.
-  sops.age.keyFile = "/persistent/usr/share/ada-valley/age-password.key";
+  sops.age.keyFile = "/persistent${vars.vm.sharedFolder}/age-password.key";
   # sops.age.keyFile = "/persistent/mk-password.key";
   # If true, this will generate a new key if the key specified above does not exist
   sops.age.generateKey = false;
@@ -135,6 +135,65 @@
   #   enableSSHSupport = true;
   # };
 
+  # List of systemd services available
+  systemd.services.cardano-node = let
+    cardanoStartupScript = pkgs.writeShellApplication {
+      name = "start-cardano";
+      text = ''
+      # Ensure directories exist
+      mkdir -p /persistent${vars.vm.sharedFolder}/cardano-db
+      
+      # Wait for network interface to be available
+      INTERFACE="eth1"
+      RETRY_COUNT=0
+      MAX_RETRIES=30
+      
+      while ! ip link show $INTERFACE &>/dev/null && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        echo "Waiting for interface $INTERFACE to be available... ($RETRY_COUNT/$MAX_RETRIES)"
+        sleep 1
+        RETRY_COUNT=$((RETRY_COUNT+1))
+      done
+      
+      if ! ip link show $INTERFACE &>/dev/null; then
+        echo "Interface $INTERFACE not found after waiting. Exiting."
+        exit 1
+      fi
+      
+      # Get the IP address
+      IP=$(${pkgs.iproute2}/bin/ip -o -4 addr show dev "$INTERFACE" | grep -oP "(?<=inet\s)\d+(\.\d+){3}")
+      
+      if [ -z "$IP" ]; then
+        echo "No IP address found for interface $INTERFACE. Exiting."
+        exit 1
+      fi
+      
+      echo "Starting cardano-node with IP: $IP"
+      exec ${pkgs.cardano-node}/bin/cardano-node run \
+        --topology /etc/cardano-configs-testnet-preview/topology.json \
+        --database-path /persistent${vars.vm.sharedFolder}/cardano-db \
+        --socket-path /persistent${vars.vm.sharedFolder}/cardano-db/node.socket \
+        --host-addr "$IP" \
+        --port 3001 \
+        --config /etc/cardano-configs-testnet-preview/config.json
+    '';
+  };
+  in {
+    description = "Cardano node startup";
+    wantedBy = ["multi-user.target"];
+    # Ensure proper dependency order
+    after = [ "network-online.target" "sops-nix.target" ];
+    wants = [ "network-online.target" ];
+    # Add a restart policy
+    serviceConfig = {
+      Type = "simple";
+      User = "alice";
+      Group = "users";
+      ExecStart = "${cardanoStartupScript}/bin/start-cardano";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+    path = [ pkgs.cardano-node pkgs.iproute2 ];
+  };
   # List services that you want to enable:
 
   # Enable the OpenSSH daemon.
