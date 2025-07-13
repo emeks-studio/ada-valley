@@ -140,8 +140,34 @@
     cardanoStartupScript = pkgs.writeShellApplication {
       name = "start-cardano";
       text = ''
+      # Ensure directories exist
+      mkdir -p /persistent${vars.vm.sharedFolder}/cardano-db
+      
+      # Wait for network interface to be available
       INTERFACE="eth1"
+      RETRY_COUNT=0
+      MAX_RETRIES=30
+      
+      while ! ip link show $INTERFACE &>/dev/null && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        echo "Waiting for interface $INTERFACE to be available... ($RETRY_COUNT/$MAX_RETRIES)"
+        sleep 1
+        RETRY_COUNT=$((RETRY_COUNT+1))
+      done
+      
+      if ! ip link show $INTERFACE &>/dev/null; then
+        echo "Interface $INTERFACE not found after waiting. Exiting."
+        exit 1
+      fi
+      
+      # Get the IP address
       IP=$(${pkgs.iproute2}/bin/ip -o -4 addr show dev "$INTERFACE" | grep -oP "(?<=inet\s)\d+(\.\d+){3}")
+      
+      if [ -z "$IP" ]; then
+        echo "No IP address found for interface $INTERFACE. Exiting."
+        exit 1
+      fi
+      
+      echo "Starting cardano-node with IP: $IP"
       exec ${pkgs.cardano-node}/bin/cardano-node run \
         --topology /etc/cardano-configs-testnet-preview/topology.json \
         --database-path /persistent${vars.vm.sharedFolder}/cardano-db \
@@ -154,13 +180,17 @@
   in {
     description = "Cardano node startup";
     wantedBy = ["multi-user.target"];
-    after = [ "network-online.target" ];
+    # Ensure proper dependency order
+    after = [ "network-online.target" "sops-nix.target" ];
     wants = [ "network-online.target" ];
+    # Add a restart policy
     serviceConfig = {
       Type = "simple";
       User = "alice";
       Group = "users";
       ExecStart = "${cardanoStartupScript}/bin/start-cardano";
+      Restart = "on-failure";
+      RestartSec = "10s";
     };
     path = [ pkgs.cardano-node pkgs.iproute2 ];
   };
