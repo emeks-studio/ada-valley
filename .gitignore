@@ -3,4 +3,4 @@ result
 secrets/*.hash
 secrets/*.key
 nixos.qcow2
-vars/local/vars.nix
+vars.nix

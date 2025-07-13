@@ -11,9 +11,9 @@
       flake = false;
     };
 
-    varsDirectory = {
-      type = "path";
-      path = "./vars/template";
+    varsFilePath = {
+      # Default to vars-template.nix please make your own vars.nix and override the input!
+      url = "path:./vars-template.nix"; 
       flake = false;
     };
 
@@ -44,9 +44,9 @@
     };
   };
 
-  outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node, varsDirectory }:
+  outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node, varsFilePath }:
     let 
-      vars = import "${varsDirectory}/vars.nix";
+      vars = builtins.import varsFilePath;
       system = "x86_64-linux";
       vm_runner = "./result/bin/run-nixos-vm";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -117,10 +117,10 @@
         text = ''
           echo
           echo "Available commands:"
-          echo "  nix build .#nixosConfigurations.nixos-vm.config.system.build.vm --override-input varsFile path:./vars.nix  - Build the NixOS VM"
-          echo "  nix run .#start-vm                                                                                         - Run the VM with QEMU"
-          echo "  nix run .#help                                                                                             - Show this help message"
-          echo "  nix run .#show                                                                                             - Show vm startup command"
+          echo "  nix build .#nixosConfigurations.nixos-vm.config.system.build.vm --override-input varsFilePath path:./vars.nix     - Build the NixOS VM"
+          echo "  nix run .#start-vm                                                                                                - Run the VM with QEMU"
+          echo "  nix run .#help                                                                                                    - Show this help message"
+          echo "  nix run .#show                                                                                                    - Show vm startup command"
         '';
       };
       show = pkgs.writeShellApplication {
