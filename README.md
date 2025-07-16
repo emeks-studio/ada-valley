@@ -35,6 +35,8 @@ If you add a new host to your .sops.yaml file, you will need to update the keys 
 nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-password.key; sops updatekeys ./secrets/keys.enc.yaml"
 ```
 
+^ Note: In case a new admin added their public key to the .sops.yaml file, you will need to run this command to update the keys file in order to authorize the new admin to decrypt the secrets.
+
 1.b Only the first time, Open the file and add the required keys:
 ```bash
 # ex. alice-password: $(mkpasswd -m sha-512 $YOUR_SECRET_PASSWORD > ./secrets/alice-password.hash)
