@@ -227,13 +227,13 @@
     "list": []
   },
   "time": {
-    "from": "2025-07-17T23:37:00.173Z",
-    "to": "2025-07-18T00:42:43.525Z"
+    "from": "now-6h",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Stake Pool Metrics",
   "uid": "ces964klx0oaoa",
-  "version": 3,
+  "version": 2,
   "weekStart": ""
 }

@@ -289,10 +289,16 @@
           }
         ];
         dashboards.settings.providers = [
-          # Example dashboard provider:
           {
-            name = "cardano-blockchain-metrics";
-            options.path = "/etc/grafana-dashboards/cardano-blockchain-metrics.json";
+            name = "my-provisioned-dashboards"; # A unique name for your provider
+            type = "file"; # The type of provider (usually "file" for local files)
+            allowUiUpdates = true; # Set to false if you want to prevent users from modifying these dashboards in the UI
+            options = {
+              path = "/etc/grafana-dashboards"; # Path to the directory containing your dashboard JSON files
+              # Or, if you have a single dashboard file:
+              # path = ./grafana-dashboards/my-dashboard.json;
+              foldersFromFilesStructure = true; # (Optional) If your dashboards are in subdirectories, they will be organized into folders in Grafana
+            };
           }
         ];
       };
