@@ -178,6 +178,18 @@ cardano-cli query tip --testnet-magic 2 --socket-path /usr/share/ada-valley/card
 ssh alice@VM_IP
 ```
 
+## 6. Accessing Grafana
+
+Access Grafana in your browser at http://VM_IP:4001
+
+The default login credentials are:
+- Username: `admin`  
+- Password: `admin` (you'll be prompted to change this on first login)
+
+Grafana comes preconfigured with a Prometheus data source that monitors:
+- The Cardano node metrics (port 12798)
+- System metrics via node_exporter (port 9100)
+
 ## Update the VM
 
 1. Delete this file when you change the configuration

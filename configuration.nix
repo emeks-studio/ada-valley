@@ -29,6 +29,13 @@
     source = pkgs.cardano-configs-testnet-preview;
   };
 
+  # If you perform changes to the dashboard while the VM is running,
+  # you can copy the dashboard JSON and paste it into proper file in the repository.
+  # (!) If you don't do that, you would lose the changes if nixos.qcow2 file is removed.
+  environment.etc."grafana-dashboards" = {
+    source = pkgs.grafana-dashboards;
+  };
+
   # This tutorial focuses on testing NixOS configurations on a virtual machine. 
   # Therefore you will remove the reference to:
   # imports =
@@ -208,8 +215,8 @@
   };
 
   # Ref. https://nixos.org/manual/nixos/stable/#module-services-prometheus-exporters
-  # Access via: http://192.168.100.78:9100/metrics
-  # and for cardano-node: http://192.168.100.78:12798/metrics
+  # Access via: http://$VM_IP:9100/metrics
+  # and for cardano-node: http://$VM_IP:12798/metrics
   services.prometheus.exporters.node = {
     enable = true;
     port = 9100;
@@ -226,7 +233,7 @@
   };
 
   # Prometheus Server (TODO: Move it to a dedicate server)
-  # Access via: http://192.168.100.78:9090
+  # Access via: http://$VM_IP:9090
   services.prometheus = {
       enable = true;
       port = 9090;
@@ -237,24 +244,65 @@
           # To scrape data from a node exporter to monitor your Linux host metrics.
           job_name = "node-exporter";
           static_configs = [{
-            targets = [ "192.168.100.78:${toString config.services.prometheus.exporters.node.port}" ];
+            targets = [ "localhost:${toString config.services.prometheus.exporters.node.port}" ];
           }];
         }
         {
           # To scrape data from the Cardano node
           job_name = "cardano-node";
           static_configs = [{
-            targets = [ "192.168.100.78:12798" ];
+            targets = [ "localhost:12798" ];
           }];
         }
       ];
    };
 
+  services.grafana = {
+      enable = true;
+      settings = {
+        server = {
+          http_addr = "0.0.0.0"; # Listen on all interfaces
+          http_port = 4001;
+          enforce_domain = false;
+        };
+        # Security settings
+        security = {
+          # For production, use a proper password or preferably OAuth/LDAP
+          admin_user = "admin";
+          # Default password is "admin" - user will be prompted to change on first login
+        };
+      };
+
+      # Optional: Declaratively provision datasources and dashboards
+      # This is a powerful feature for managing your Grafana setup as code.
+      # See the "Declarative Provisioning" section below for more details.
+      provision = {
+        enable = true;
+        datasources.settings.datasources = [
+          # Example Prometheus datasource:
+          {
+            name = "Prometheus Server";
+            type = "prometheus";
+            access = "proxy";
+            url = "http://localhost:${toString config.services.prometheus.port}";
+            isDefault = true;
+          }
+        ];
+        dashboards.settings.providers = [
+          # Example dashboard provider:
+          {
+            name = "cardano-blockchain-metrics";
+            options.path = "/etc/grafana-dashboards/cardano-blockchain-metrics.json";
+          }
+        ];
+      };
+  };
+
   # Open ports in the firewall Or disable the firewall altogether.
   networking.firewall = {
     enable = true;
     # Open ports in the firewall.
-    allowedTCPPorts = [ 22 80 9090 9100 12798];
+    allowedTCPPorts = [ 22 80 9090 9100 12798 4001];
     # allowedUDPPorts = [ ... ];
     # Add your custom iptables rule here
     # extraCommands = "";
