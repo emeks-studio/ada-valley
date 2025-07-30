@@ -1,4 +1,20 @@
 {
+  nixConfig = {
+    # This sets the flake to use the IOG nix cache (and others).
+    # Nix should ask for permission before using it,
+    # but remove it here if you do not want it to.
+    extra-substituters = [
+      "https://cache.iog.io"
+      "https://pre-commit-hooks.cachix.org"
+      "https://emeks-public.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+      "pre-commit-hooks.cachix.org-1:Pkk3Panw5AW24TOv6kz3PvLhlH8puAsJTBbOPmBo7Rc="
+      "emeks-public.cachix.org-1:sz2oZuYq7EsRb5FW6sDtpPU1CWh+6ymOgxFgmrYTKGI="
+    ];
+  };
+
   description = "NixOS VM configuration";
 
   inputs = {
