@@ -86,6 +86,7 @@
                   })
                   (import ./overlays/cardano-configs-testnet-preview.nix)
                   (import ./overlays/grafana-dashboards.nix)
+                  (import ./overlays/cardano-auditor.nix)
               ];
             }
             ({ config, pkgs, ...}: {

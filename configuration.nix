@@ -122,6 +122,7 @@
       tree
       cardano-node
       cardano-cli
+      cardano-auditor
     ];
   };
 
