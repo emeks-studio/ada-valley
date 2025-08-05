@@ -215,6 +215,36 @@
     };
   };
 
+  # TODO: Analize if at some point we need chrony with NTS turning on for more secure time synchronization.
+  # Enable chrony for accurate time synchronization (critical for Cardano stake pools)
+  # Cheatsheet:
+  # Check chrony status
+  # $ chronyc tracking
+  # View time sources
+  # $ chronyc sources -v
+  # Check system time sync
+  # $ timedatectl status
+  services.timesyncd.enable = false; # Disable systemd-timesyncd if using chrony
+  services.chrony = {
+    enable = true;
+    servers = [
+      "0.pool.ntp.org"
+      "1.pool.ntp.org" 
+      "2.pool.ntp.org"
+      "3.pool.ntp.org"
+      "time.cloudflare.com" 
+      "time.google.com"
+    ];
+    extraConfig = ''
+      # Allow large time corrections on startup;
+      # For the first 3 clock updates, make an immediate jump (step) if time is off by more than 1.0 second
+      # After that, always use gradual slewing regardless of how far off the clock is
+      makestep 1.0 3
+      # Notify log time adjustments more than 0.5 seconds
+      logchange 0.5
+    '';
+  };
+
   # Ref. https://nixos.org/manual/nixos/stable/#module-services-prometheus-exporters
   # Access via: http://$VM_IP:9100/metrics
   # and for cardano-node: http://$VM_IP:12798/metrics
