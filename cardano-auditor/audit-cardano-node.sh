@@ -293,7 +293,8 @@ security_checks() {
                 echo -e " [\e[1;31mKO\e[0m] Service $CARDANO_SERVICE is not running. Check your service status"
             fi
         fi
-        if [ "$(systemctl show -p SubState --value chrony)" == "running" ]; then
+        # PATH: In nixOS is called chronyd
+        if [ "$(systemctl show -p SubState --value chronyd)" == "running" ]; then
             echo -e " [\e[1;32mOK\e[0m] Service chrony (ntp) is running"
         else
             echo -e " [\e[1;33mWARNING\e[0m] Service chrony (ntp) not running. Make sure you have a NTP sync service"

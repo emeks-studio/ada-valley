@@ -240,10 +240,6 @@
       # For the first 3 clock updates, make an immediate jump (step) if time is off by more than 1.0 second
       # After that, always use gradual slewing regardless of how far off the clock is
       makestep 1.0 3
-      
-      # Enable kernel synchronization
-      rtcsync
-
       # Notify log time adjustments more than 0.5 seconds
       logchange 0.5
     '';
