@@ -1764,14 +1764,15 @@
     "varsFilePath": {
       "flake": false,
       "locked": {
+        "lastModified": 1,
+        "narHash": "sha256-oAz6wU8qzg1wMU2OwYMmgevTJ9/PdaUBucRAWXydb8k=",
         "path": "./vars-template.nix",
         "type": "path"
       },
       "original": {
         "path": "./vars-template.nix",
         "type": "path"
-      },
-      "parent": []
+      }
     },
     "yants": {
       "inputs": {
