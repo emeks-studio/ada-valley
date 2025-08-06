@@ -61,6 +61,7 @@ ip -br a # Look for something like "enpXs0"
 sudo ip link add br0 type bridge
 sudo ip link set dev br0 up
 sudo ip link set $YOUR_NETWORK_INTERFACE master br0
+sudo dhclient br0
 
 modprobe tun tap
 sudo ip tuntap add dev tap0 mode tap
@@ -127,7 +128,28 @@ The full list of commands are:
   - `nix run .#show` To view how the vm will be started
   - `nix run .#start-vm` or simply `nix run .`
 
+## 3.2 Interacting with the virtual machine
 
+### Add authorized users for tunneling
+
+The virtual machine only allows SSH access through authorized public keys. To add a new key, you must encrypt it using [SOPS](https://github.com/getsops/sops) before including it in the system.
+To add a new key:
+
+#### Using nix
+`nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=${YOUR_LOCAL_AGE_FILE}; sops ./secrets/keys.enc.yaml"`
+
+#### Using linux (having installed sops package)
+`export SOPS_AGE_KEY_FILE=${YOUR_LOCAL_AGE_FILE}; sops ./secrets/keys.enc.yaml`
+
+This will open a terminal editor where you can append your public key to the authorized-keys array. Add your key to allow SOPS to encrypt it.
+
+```
+authorized-keys: |
+  - PUBLIC KEY 1
+  - ...{{INSERT HERE YOUR PUBLIC KEY}}
+```
+
+The new key will be encrypted using your Age key file. After that, you must commit and push the updated file to the repository.
 
 ## 4. Cardano Node 
 The Cardano node is configured in the configuration.nix as a systemd service called **cardano-node**, it will automatically starts on system startup, it will run the cardano node with these parameters:

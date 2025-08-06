@@ -593,11 +593,11 @@
     "hackageNix_2": {
       "flake": false,
       "locked": {
-        "lastModified": 1752798436,
-        "narHash": "sha256-kvcQuHAOo5PG2pbsvGrFVpmXKcHVgAzQb5yruPPKsK8=",
+        "lastModified": 1754353730,
+        "narHash": "sha256-pkb2+tz2EXcoqjZMmOqv3UNsSPQatDHjS38aOVYBNT4=",
         "owner": "input-output-hk",
         "repo": "hackage.nix",
-        "rev": "09e0a8deaf3c3687ba1bf95f75b1cb822d87c3ba",
+        "rev": "3def4d6bbf2345a783254814ac443d2605432c5d",
         "type": "github"
       },
       "original": {
@@ -1558,11 +1558,11 @@
         "nixpkgs": "nixpkgs_8"
       },
       "locked": {
-        "lastModified": 1752544651,
-        "narHash": "sha256-GllP7cmQu7zLZTs9z0J2gIL42IZHa9CBEXwBY9szT0U=",
+        "lastModified": 1754328224,
+        "narHash": "sha256-glPK8DF329/dXtosV7YSzRlF4n35WDjaVwdOMEoEXHA=",
         "owner": "Mic92",
         "repo": "sops-nix",
-        "rev": "2c8def626f54708a9c38a5861866660395bb3461",
+        "rev": "49021900e69812ba7ddb9e40f9170218a7eca9f4",
         "type": "github"
       },
       "original": {
@@ -1764,15 +1764,14 @@
     "varsFilePath": {
       "flake": false,
       "locked": {
-        "lastModified": 1,
-        "narHash": "sha256-oAz6wU8qzg1wMU2OwYMmgevTJ9/PdaUBucRAWXydb8k=",
         "path": "./vars-template.nix",
         "type": "path"
       },
       "original": {
         "path": "./vars-template.nix",
         "type": "path"
-      }
+      },
+      "parent": []
     },
     "yants": {
       "inputs": {
