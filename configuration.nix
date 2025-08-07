@@ -15,6 +15,17 @@
   };
   system.activationScripts.setupSecretsForUsers.deps = ["mountSharedDirectory"];
 
+  system.activationScripts.setupRightOwnershipPublickeys = {
+    text = ''
+      for file in /etc/ssh/authorized_keys.d/*; do
+        user=$(basename "$file" .pub)
+        if id "$user" > /dev/null 2>&1; then
+          chown "$user:users" "$file"
+        fi
+      done
+    '';
+  };
+
   environment.persistence."/persistent" = {
     enable = true;  # NB: Defaults to true, not needed
     hideMounts = true;
@@ -55,7 +66,6 @@
   sops.age.generateKey = false;
   # This is the actual specification of the secrets.
   sops.secrets.alice-password = {};
-  sops.secrets.authorized-keys = {};
 
   # Use the GRUB 2 boot loader.
   boot.loader.grub.enable = true;
@@ -145,23 +155,6 @@
   # };
 
   # List of systemd services available
-  systemd.services.load-authorized-keys = {
-    description = "load authorized public keys";
-    wantedBy = ["multi-user.target"];
-    after = [ "network.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = pkgs.writeShellScript "load-authorized-keys" ''
-        set -euo pipefail
-        grep -E '^ *- ' ${config.sops.secrets.authorized-keys.path} | sed 's/^ *- //' > /etc/ssh/authorized_keys.d/${config.users.users.alice.name}
-        chmod 600 /etc/ssh/authorized_keys.d/${config.users.users.alice.name}
-        chown root:root /etc/ssh/authorized_keys.d/${config.users.users.alice.name}
-        chown ${config.users.users.alice.name}:users /etc/ssh/authorized_keys.d/${config.users.users.alice.name}
-      '';
-    };
-  };
-
-
   systemd.services.cardano-node = let
     cardanoStartupScript = pkgs.writeShellApplication {
       name = "start-cardano";

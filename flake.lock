@@ -1516,6 +1516,7 @@
         "impermanence": "impermanence",
         "nixpkgs": "nixpkgs_7",
         "sops-nix": "sops-nix",
+        "ssh-keys": "ssh-keys",
         "varsFilePath": "varsFilePath"
       }
     },
@@ -1570,6 +1571,18 @@
         "repo": "sops-nix",
         "type": "github"
       }
+    },
+    "ssh-keys": {
+      "flake": false,
+      "locked": {
+        "path": "./ssh-keys",
+        "type": "path"
+      },
+      "original": {
+        "path": "./ssh-keys",
+        "type": "path"
+      },
+      "parent": []
     },
     "stackage": {
       "flake": false,
