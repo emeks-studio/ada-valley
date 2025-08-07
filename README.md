@@ -132,24 +132,11 @@ The full list of commands are:
 
 ### Add authorized users for tunneling
 
-The virtual machine only allows SSH access through authorized public keys. To add a new key, you must encrypt it using [SOPS](https://github.com/getsops/sops) before including it in the system.
-To add a new key:
-
-#### Using nix
-`nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=${YOUR_LOCAL_AGE_FILE}; sops ./secrets/keys.enc.yaml"`
-
-#### Using linux (having installed sops package)
-`export SOPS_AGE_KEY_FILE=${YOUR_LOCAL_AGE_FILE}; sops ./secrets/keys.enc.yaml`
-
-This will open a terminal editor where you can append your public key to the authorized-keys array. Add your key to allow SOPS to encrypt it.
-
-```
-authorized-keys: |
-  - PUBLIC KEY 1
-  - ...{{INSERT HERE YOUR PUBLIC KEY}}
-```
-
-The new key will be encrypted using your Age key file. After that, you must commit and push the updated file to the repository.
+The virtual machine restricts SSH access to authorized public keys only.
+To authorize a new user, add their public key to a file in the `ssh-keys` directory.
+- Each file in the ssh-keys folder should be named after the corresponding system vm user.
+- Place one public key per line in the file.
+- These keys will be used to grant SSH access to the user matching the filename.
 
 ## 4. Cardano Node 
 The Cardano node is configured in the configuration.nix as a systemd service called **cardano-node**, it will automatically starts on system startup, it will run the cardano node with these parameters:
