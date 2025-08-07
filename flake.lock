@@ -1516,6 +1516,7 @@
         "impermanence": "impermanence",
         "nixpkgs": "nixpkgs_7",
         "sops-nix": "sops-nix",
+        "ssh-keys": "ssh-keys",
         "varsFilePath": "varsFilePath"
       }
     },
@@ -1569,6 +1570,19 @@
         "owner": "Mic92",
         "repo": "sops-nix",
         "type": "github"
+      }
+    },
+    "ssh-keys": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1,
+        "narHash": "sha256-TTtAN2BJE4UXmM5KhNwG3+dINaDdMbuWYM8sy0mvnuo=",
+        "path": "./ssh-keys",
+        "type": "path"
+      },
+      "original": {
+        "path": "./ssh-keys",
+        "type": "path"
       }
     },
     "stackage": {
@@ -1764,14 +1778,15 @@
     "varsFilePath": {
       "flake": false,
       "locked": {
+        "lastModified": 1,
+        "narHash": "sha256-oAz6wU8qzg1wMU2OwYMmgevTJ9/PdaUBucRAWXydb8k=",
         "path": "./vars-template.nix",
         "type": "path"
       },
       "original": {
         "path": "./vars-template.nix",
         "type": "path"
-      },
-      "parent": []
+      }
     },
     "yants": {
       "inputs": {
