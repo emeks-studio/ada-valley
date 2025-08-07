@@ -61,6 +61,7 @@ ip -br a # Look for something like "enpXs0"
 sudo ip link add br0 type bridge
 sudo ip link set dev br0 up
 sudo ip link set $YOUR_NETWORK_INTERFACE master br0
+sudo dhclient br0
 
 modprobe tun tap
 sudo ip tuntap add dev tap0 mode tap
@@ -127,7 +128,15 @@ The full list of commands are:
   - `nix run .#show` To view how the vm will be started
   - `nix run .#start-vm` or simply `nix run .`
 
+## 3.2 Interacting with the virtual machine
 
+### Add authorized users for tunneling
+
+The virtual machine restricts SSH access to authorized public keys only.
+To authorize a new user, add their public key to a file in the `ssh-keys` directory.
+- Each file in the ssh-keys folder should be named after the corresponding system vm user.
+- Place one public key per line in the file.
+- These keys will be used to grant SSH access to the user matching the filename.
 
 ## 4. Cardano Node 
 The Cardano node is configured in the configuration.nix as a systemd service called **cardano-node**, it will automatically starts on system startup, it will run the cardano node with these parameters:

@@ -58,9 +58,14 @@
       url = "github:intersectmbo/cardano-node/10.1.4";
       inputs.haskellNix.follows = "haskellNix";
     };
+
+    ssh-keys = {
+      url = "path:./ssh-keys";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node, varsFilePath }:
+  outputs = { self, nixpkgs, sops-nix, impermanence, hackageNix, haskellNix, /* iohkNix,*/ cardano-node, varsFilePath, ssh-keys }:
     let 
       vars = builtins.import varsFilePath;
       system = "x86_64-linux";
@@ -97,6 +102,17 @@
                   fsType = "9p";
                   options = [ "trans=virtio" "version=9p2000.L" "cache=mmap" ];
                 };
+                environment.etc = builtins.listToAttrs (
+                  map 
+                    (fileName: {
+                      name = "ssh/authorized_keys.d/${fileName}";
+                      value = {
+                        source = "${ssh-keys}/${fileName}";
+                        mode = "0444";
+                      };
+                    })
+                    (builtins.attrNames (builtins.readDir ssh-keys))
+                );
             })
             impermanence.nixosModules.impermanence
             sops-nix.nixosModules.sops

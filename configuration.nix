@@ -15,6 +15,17 @@
   };
   system.activationScripts.setupSecretsForUsers.deps = ["mountSharedDirectory"];
 
+  system.activationScripts.setupRightOwnershipPublickeys = {
+    text = ''
+      for file in /etc/ssh/authorized_keys.d/*; do
+        user=$(basename "$file" .pub)
+        if id "$user" > /dev/null 2>&1; then
+          chown "$user:users" "$file"
+        fi
+      done
+    '';
+  };
+
   environment.persistence."/persistent" = {
     enable = true;  # NB: Defaults to true, not needed
     hideMounts = true;
@@ -208,10 +219,13 @@
   services.openssh = {
     enable = true;
     settings = {
-      PermitRootLogin = "no";
-      PasswordAuthentication = true;
+      PermitRootLogin = "prohibit-password";
+      PasswordAuthentication = false;
+      PubkeyAuthentication = true;
       PermitEmptyPasswords = "no";
+      KbdInteractiveAuthentication = false;
       ChallengeResponseAuthentication = "no";
+      AuthorizedKeysFile = "/etc/ssh/authorized_keys.d/%u";
     };
   };
 
