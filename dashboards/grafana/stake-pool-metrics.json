@@ -23,12 +23,20 @@
   "links": [],
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 100,
+      "panels": [],
+      "title": "Blockchain Metrics",
+      "type": "row"
+    },
+    {
       "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
       "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
       "id": 1,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "cardano_node_metrics_epoch_int", "refId": "A"}],
@@ -41,7 +49,7 @@
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
       "id": 2,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "cardano_node_metrics_blockNum_int", "refId": "A"}],
@@ -54,7 +62,7 @@
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
       "id": 3,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "cardano_node_metrics_slotInEpoch_int", "refId": "A"}],
@@ -67,7 +75,7 @@
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "percentunit"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 1},
       "id": 4,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "cardano_node_metrics_density_real", "refId": "A"}],
@@ -77,23 +85,10 @@
     {
       "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
       "fieldConfig": {
-        "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 20}]}, "unit": "short"},
-        "overrides": []
-      },
-      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
-      "id": 5,
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
-      "targets": [{"expr": "cardano_node_metrics_peerSelection_ActivePeers", "refId": "A"}],
-      "title": "Active Peers",
-      "type": "stat"
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
-      "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [{"options": {"0": {"text": "Disabled"}}, "type": "value"}, {"options": {"1": {"text": "Enabled"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 1},
       "id": 17,
       "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "cardano_node_metrics_forging_enabled", "refId": "A"}],
@@ -106,12 +101,33 @@
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 4},
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 1},
       "id": 12,
       "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "name"},
-      "targets": [{"expr": "cardano_node_metrics_cardano_build_info", "refId": "A"}],
+      "targets": [{"expr": "label_replace(cardano_node_metrics_cardano_build_info, \"version_display\", \"$1\", \"version\", \"(.*)\")", "refId": "A"}],
       "title": "Node Version",
       "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 5},
+      "id": 7,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
+      "targets": [{"expr": "cardano_node_metrics_blockNum_int", "legendFormat": "Block Height", "refId": "A"}, {"expr": "cardano_node_metrics_slotNum_int", "legendFormat": "Slot Number", "refId": "B"}],
+      "title": "Block & Slot Progress",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 13},
+      "id": 101,
+      "panels": [],
+      "title": "System & Memory Metrics",
+      "type": "row"
     },
     {
       "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
@@ -119,7 +135,7 @@
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "s"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 4},
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 14},
       "id": 13,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "time() - cardano_node_metrics_nodeStartTime_int", "refId": "A"}],
@@ -132,7 +148,7 @@
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}, "unit": "percent"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 4},
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 14},
       "id": 14,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "refId": "A"}],
@@ -142,10 +158,23 @@
     {
       "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
       "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "bytes"},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 14},
+      "id": 6,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
+      "targets": [{"expr": "cardano_node_metrics_Mem_resident_int", "refId": "A"}],
+      "title": "Memory Usage",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
+      "fieldConfig": {
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 4},
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 14},
       "id": 15,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "cardano_node_metrics_Stat_threads_int", "refId": "A"}],
@@ -158,7 +187,7 @@
         "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 4},
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 14},
       "id": 16,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
       "targets": [{"expr": "cardano_node_metrics_RTS_gcMajorNum_int", "refId": "A"}],
@@ -168,14 +197,74 @@
     {
       "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
       "fieldConfig": {
-        "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "bytes"},
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "bytes"},
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 8},
-      "id": 6,
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 18},
+      "id": 9,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
+      "targets": [{"expr": "cardano_node_metrics_Mem_resident_int", "legendFormat": "Resident Memory", "refId": "A"}, {"expr": "cardano_node_metrics_RTS_gcHeapBytes_int", "legendFormat": "GC Heap", "refId": "B"}, {"expr": "cardano_node_metrics_RTS_gcLiveBytes_int", "legendFormat": "GC Live", "refId": "C"}],
+      "title": "Memory Usage Over Time",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 26},
+      "id": 102,
+      "panels": [],
+      "title": "Network & Peer Metrics",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 20}]}, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 27},
+      "id": 5,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
-      "targets": [{"expr": "cardano_node_metrics_Mem_resident_int", "refId": "A"}],
-      "title": "Memory Usage",
+      "targets": [{"expr": "cardano_node_metrics_peerSelection_ActivePeers", "refId": "A"}],
+      "title": "Active Peers",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 27},
+      "id": 18,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
+      "targets": [{"expr": "cardano_node_metrics_peerSelection_EstablishedPeers", "refId": "A"}],
+      "title": "Established Peers",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 27},
+      "id": 19,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
+      "targets": [{"expr": "cardano_node_metrics_peerSelection_KnownPeers", "refId": "A"}],
+      "title": "Known Peers",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 27},
+      "id": 20,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "auto"},
+      "targets": [{"expr": "cardano_node_metrics_connectionManager_duplexConns", "refId": "A"}],
+      "title": "Duplex Connections",
       "type": "stat"
     },
     {
@@ -184,37 +273,11 @@
         "defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 4, "y": 8},
-      "id": 7,
-      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
-      "targets": [{"expr": "cardano_node_metrics_blockNum_int", "legendFormat": "Block Height", "refId": "A"}, {"expr": "cardano_node_metrics_slotNum_int", "legendFormat": "Slot Number", "refId": "B"}],
-      "title": "Block & Slot Progress",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
-      "fieldConfig": {
-        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
-        "overrides": []
-      },
-      "gridPos": {"h": 8, "w": 12, "x": 16, "y": 8},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 31},
       "id": 8,
       "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
       "targets": [{"expr": "cardano_node_metrics_peerSelection_ActivePeers", "legendFormat": "Active", "refId": "A"}, {"expr": "cardano_node_metrics_peerSelection_EstablishedPeers", "legendFormat": "Established", "refId": "B"}, {"expr": "cardano_node_metrics_peerSelection_KnownPeers", "legendFormat": "Known", "refId": "C"}],
-      "title": "Peer Connections",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "P61C886269637149E"},
-      "fieldConfig": {
-        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "bytes"},
-        "overrides": []
-      },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
-      "id": 9,
-      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
-      "targets": [{"expr": "cardano_node_metrics_Mem_resident_int", "legendFormat": "Resident Memory", "refId": "A"}, {"expr": "cardano_node_metrics_RTS_gcHeapBytes_int", "legendFormat": "GC Heap", "refId": "B"}, {"expr": "cardano_node_metrics_RTS_gcLiveBytes_int", "legendFormat": "GC Live", "refId": "C"}],
-      "title": "Memory Usage",
+      "title": "Peer Connections Over Time",
       "type": "timeseries"
     },
     {
@@ -223,7 +286,7 @@
         "defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 31},
       "id": 10,
       "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
       "targets": [{"expr": "cardano_node_metrics_connectionManager_incomingConns", "legendFormat": "Incoming", "refId": "A"}, {"expr": "cardano_node_metrics_connectionManager_outgoingConns", "legendFormat": "Outgoing", "refId": "B"}, {"expr": "cardano_node_metrics_connectionManager_duplexConns", "legendFormat": "Duplex", "refId": "C"}],
@@ -236,7 +299,7 @@
         "defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "barWidthFactor": 0.6, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"},
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 39},
       "id": 11,
       "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
       "targets": [{"expr": "cardano_node_metrics_peerSelection_cold", "legendFormat": "Cold", "refId": "A"}, {"expr": "cardano_node_metrics_peerSelection_warm", "legendFormat": "Warm", "refId": "B"}, {"expr": "cardano_node_metrics_peerSelection_hot", "legendFormat": "Hot", "refId": "C"}],
@@ -256,7 +319,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Stake Pool Metrics",
+  "title": "Cardano Node Monitoring Dashboard",
   "uid": "ces964klx0oaoa",
   "version": 2,
   "weekStart": ""
