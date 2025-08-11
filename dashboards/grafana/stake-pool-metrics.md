@@ -3,9 +3,9 @@
 
 This dashboard provides the same essential monitoring capabilities as gLiveView:
 * Real-time blockchain sync status
-* Peer connectivity health
-* Memory usage monitoring
+* Memory and CPU usage monitoring
 * Connection state tracking
+* Peer connectivity health
 
 ## Top Row:
 
@@ -14,6 +14,15 @@ This dashboard provides the same essential monitoring capabilities as gLiveView:
 * Slot in Epoch - Current slot within the epoch (Slots are fixed time intervals 1 second each)
 * Chain Density = (Number of blocks produced) / (Number of slots elapsed) x 100
 * Active Peers - Number of active peer connections
+* Forging Status - Shows if block forging is enabled/disabled
+
+## Second row:
+
+* Node Version - Shows Cardano node version from build info
+* Node Uptime - Calculated from node start time
+* CPU Usage - System CPU utilization percentage
+* Threads - Number of active threads
+* GC Major - Major garbage collection count
 * Memory Usage - Current memory consumption
 
 ## Main Charts:
