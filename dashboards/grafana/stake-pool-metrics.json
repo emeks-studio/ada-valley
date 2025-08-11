@@ -104,7 +104,7 @@
       "gridPos": {"h": 4, "w": 4, "x": 20, "y": 1},
       "id": 12,
       "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""}, "textMode": "name"},
-      "targets": [{"expr": "label_replace(cardano_node_metrics_cardano_build_info, \"version_display\", \"$1\", \"version\", \"(.*)\")", "refId": "A"}],
+      "targets": [{"expr": "cardano_node_metrics_cardano_build_info", "legendFormat": "{{version}}", "refId": "A"}],
       "title": "Node Version",
       "type": "stat"
     },
@@ -319,7 +319,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Cardano Node Monitoring Dashboard",
+  "title": "Stake Pool Metrics",
   "uid": "ces964klx0oaoa",
   "version": 2,
   "weekStart": ""
