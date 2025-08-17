@@ -4,3 +4,4 @@ secrets/*.hash
 secrets/*.key
 nixos.qcow2
 vars.nix
+.amazonq/
