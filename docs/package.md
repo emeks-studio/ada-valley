@@ -1,0 +1,80 @@
+# Package
+
+## View available options
+
+The flake provides a `help` command to list the options available in the
+package:
+
+```sh
+nix run .#help
+```
+
+## Build the VM
+
+To build the NixOS VM:
+
+```sh
+nix build .#nixosConfigurations.nixos-vm.config.system.build.vm --override-input varsFilePath path:./vars.nix
+```
+
+## Start the VM
+
+To preview how the VM will be started without actually running it:
+
+```sh
+nix run .#show
+```
+
+To start the VM:
+
+```sh
+nix run .#start-vm
+```
+
+Or simply run the default target:
+
+```sh
+nix run .
+```
+
+## Access the VM
+
+You can interact with the VM either directly or via SSH.
+
+### Direct access
+
+Once the VM is started, it will prompt for a username and password.
+
+Credentials:
+
+- Username: `alice`
+- Password: `#####` (ask an existing user)
+
+### Via SSH
+
+```sh
+ssh alice@VM_IP
+```
+
+> ℹ️ You can discover the VM's internal IP from the host (without logging in directly) using a command like:\
+> `sudo arp-scan --interface=br0 192.168.1.0/24`\
+
+## Update the VM
+
+If you've made changes to [configuration.nix](../configuration.nix), you'll
+need to rebuild the VM.
+
+First, delete the existing VM image:
+
+```sh
+rm nixos.qcow2
+```
+
+Then, [**rebuild the VM**](#build-the-vm) to apply the updated configuration.
+
+_Optional_: If you've connected to the VM via SSH before, remove its old host
+key to avoid fingerprint conflicts:
+
+```sh
+ssh-keygen -R VM_IP -f ~/.ssh/known_hosts
+```
