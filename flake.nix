@@ -60,6 +60,8 @@
                     cardano-node = cardano-node.packages.${final.system}.cardano-node;
                   })
                   (import ./overlays/cardano-configs-testnet-preview.nix)
+                  (import ./overlays/cardano-configs-testnet-preprod.nix)
+                  (import ./overlays/cardano-configs-mainnet.nix)
                   (import ./overlays/grafana-dashboards.nix)
                   (import ./overlays/cardano-auditor.nix)
               ];

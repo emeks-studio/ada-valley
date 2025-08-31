@@ -36,8 +36,16 @@
   };
 
   # Can these configs files be modified in subsequents runs? should be moved them into persistent storage?
-  environment.etc."cardano-configs-testnet-preview" = {
-    source = pkgs.cardano-configs-testnet-preview;
+  environment.etc = {
+    cardano-configs-testnet-preview = {
+      source = pkgs.cardano-configs-testnet-preview;
+    };
+    cardano-configs-testnet-preprod = {
+      source = pkgs.cardano-configs-testnet-preprod;
+    };
+    cardano-configs-mainnet = {
+      source = pkgs.cardano-configs-mainnet;
+    };
   };
 
   # If you perform changes to the dashboard while the VM is running,
@@ -188,12 +196,12 @@
       
       echo "Starting cardano-node with IP: $IP"
       exec ${pkgs.cardano-node}/bin/cardano-node run \
-        --topology /etc/cardano-configs-testnet-preview/topology.json \
+        --topology /etc/cardano-configs-mainnet/topology.json \
         --database-path /persistent${vars.vm.sharedFolder}/cardano-db \
         --socket-path /persistent${vars.vm.sharedFolder}/cardano-db/node.socket \
         --host-addr "$IP" \
         --port 3001 \
-        --config /etc/cardano-configs-testnet-preview/config.json
+        --config /etc/cardano-configs-mainnet/config.json
     '';
   };
   in {
