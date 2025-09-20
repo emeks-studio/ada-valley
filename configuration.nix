@@ -303,6 +303,8 @@
         {
           # To scrape data from the Cardano node
           job_name = "cardano-node";
+          # For targets exposing metrics in the standard Prometheus text format.
+          fallback_scrape_protocol = "PrometheusText0.0.4";
           static_configs = [{
             targets = [ "localhost:12798" ];
           }];
