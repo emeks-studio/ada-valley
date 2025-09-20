@@ -73,7 +73,7 @@
   # If true, this will generate a new key if the key specified above does not exist
   sops.age.generateKey = false;
   # This is the actual specification of the secrets.
-  sops.secrets.alice-password = {};
+  sops.secrets.alice-password-hash = {};
 
   # Use the GRUB 2 boot loader.
   boot.loader.grub.enable = true;
@@ -131,12 +131,12 @@
   # services.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  sops.secrets.alice-password.neededForUsers = true;
+  sops.secrets.alice-password-hash.neededForUsers = true;
   users.users.alice = {
     isNormalUser = true;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     # password = "123";
-    hashedPasswordFile = config.sops.secrets.alice-password.path;
+    hashedPasswordFile = config.sops.secrets.alice-password-hash.path;
     packages = with pkgs; [
       tree
       cardano-node
