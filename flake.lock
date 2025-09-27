@@ -881,11 +881,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1756469547,
-        "narHash": "sha256-YvtD2E7MYsQ3r7K9K2G7nCslCKMPShoSEAtbjHLtH0k=",
+        "lastModified": 1758791193,
+        "narHash": "sha256-F8WmEwFoHsnix7rt290R0rFXNJiMbClMZyIC/e+HYf0=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "41d292bfc37309790f70f4c120b79280ce40af16",
+        "rev": "25e53aa156d47bad5082ff7618f5feb1f5e02d01",
         "type": "github"
       },
       "original": {
@@ -897,11 +897,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1744868846,
-        "narHash": "sha256-5RJTdUHDmj12Qsv7XOhuospjAjATNiTMElplWnJE9Hs=",
+        "lastModified": 1758262103,
+        "narHash": "sha256-aBGl3XEOsjWw6W3AHiKibN7FeoG73dutQQEqnd/etR8=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "ebe4301cbd8f81c4f8d3244b3632338bbeb6d49c",
+        "rev": "12bd230118a1901a4a5d393f9f56b6ad7e571d01",
         "type": "github"
       },
       "original": {
@@ -977,11 +977,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1754988908,
-        "narHash": "sha256-t+voe2961vCgrzPFtZxha0/kmFSHFobzF00sT8p9h0U=",
+        "lastModified": 1758425756,
+        "narHash": "sha256-L3N8zV6wsViXiD8i3WFyrvjDdz76g3tXKEdZ4FkgQ+Y=",
         "owner": "Mic92",
         "repo": "sops-nix",
-        "rev": "3223c7a92724b5d804e9988c6b447a0d09017d48",
+        "rev": "e0fdaea3c31646e252a60b42d0ed8eafdb289762",
         "type": "github"
       },
       "original": {
@@ -993,15 +993,14 @@
     "ssh-keys": {
       "flake": false,
       "locked": {
-        "lastModified": 1,
-        "narHash": "sha256-DormJAENQPEuyF/+FuRxfg0Rp1QIz5+3xt79hIv6eDE=",
         "path": "./ssh-keys",
         "type": "path"
       },
       "original": {
         "path": "./ssh-keys",
         "type": "path"
-      }
+      },
+      "parent": []
     },
     "stackage": {
       "flake": false,
@@ -1055,15 +1054,14 @@
     "varsFilePath": {
       "flake": false,
       "locked": {
-        "lastModified": 1,
-        "narHash": "sha256-oAz6wU8qzg1wMU2OwYMmgevTJ9/PdaUBucRAWXydb8k=",
         "path": "./vars-template.nix",
         "type": "path"
       },
       "original": {
         "path": "./vars-template.nix",
         "type": "path"
-      }
+      },
+      "parent": []
     }
   },
   "root": "root",
