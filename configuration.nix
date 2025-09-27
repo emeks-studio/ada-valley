@@ -244,7 +244,6 @@ rec {
     serviceConfig = {
       Type = "simple";
       User = "alice";
-      WorkingDirectory = vars.cardanoNode.nodeHome;
       KillSignal = "SIGINT";
       RestartKillSignal = "SIGINT";
       TimeoutStopSec = "300s"; # Give it up to 5 minutes to shut down cleanly
