@@ -293,7 +293,7 @@ security_checks() {
                 echo -e " [\e[1;31mKO\e[0m] Service $CARDANO_SERVICE is not running. Check your service status"
             fi
         fi
-        # PATH: In nixOS is called chronyd
+        # PATCH: In nixOS is called chronyd
         if [ "$(systemctl show -p SubState --value chronyd)" == "running" ]; then
             echo -e " [\e[1;32mOK\e[0m] Service chrony (ntp) is running"
         else
@@ -1292,7 +1292,8 @@ elif [[ "$NODETYPE" == "COINCASHEW" ]]; then
       SERVICE="/etc/systemd/system/cardano-node.service"
     if [ -f "$SERVICE" ] ; then
         echo -e " [\e[1;32mOK\e[0m] Systemd service file Cardano found :         "$SERVICE
-        STARTCARDANO=$(grep "ExecStart" $SERVICE | cut -d "'" -f 2)
+        # PATCH: Get the whole path (according how we define the ExecStart line in the service file)
+        STARTCARDANO=$(grep "ExecStart" $SERVICE | cut -d "=" -f 2)
         if [ -f "$STARTCARDANO" ] ; then
             echo -e " [\e[1;32mOK\e[0m] Cardano Startup script found :             "$STARTCARDANO
             echo
