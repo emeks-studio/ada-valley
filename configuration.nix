@@ -182,7 +182,7 @@ rec {
       name = "startCardanoNode.sh";
       text = ''
       # Ensure directories exist
-      mkdir -p ${vars.cardanoNode.nodeHome}/db
+      mkdir -p ${environment.variables.NODE_HOME}/db
       
       # Copy config files (if they are not there) from /etc/ according to NODE_CONFIG
       cp -n /etc/cardano-configs-${environment.variables.NODE_CONFIG}/* ${environment.variables.NODE_HOME}/
