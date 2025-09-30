@@ -48,7 +48,15 @@ Once the VM is started, it will prompt for a username and password.
 Credentials:
 
 - Username: `alice`
-- Password: `#####` (ask an existing user)
+- Password: `#####` 
+
+Note: In order to get Alice's password, decrypt the secrets file and look for `alice-password` value.
+
+```sh
+nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-password.key; sops -d ./secrets/keys.enc.yaml"
+```
+
+
 
 ### Via SSH
 

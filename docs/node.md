@@ -44,6 +44,10 @@ journalctl -fu cardano-node
 ### Check sync progress
 
 ```sh
+# for mainnet
+cardano-cli query tip --mainnet --socket-path /usr/share/ada-valley/cardano-db/node.socket
+
+# Or for testnet-preview
 cardano-cli query tip --testnet-magic 2 --socket-path /usr/share/ada-valley/cardano-db/node.socket
 # Example output:
 # {

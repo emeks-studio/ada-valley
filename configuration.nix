@@ -4,7 +4,7 @@
 
 { config, lib, pkgs, vars, configurationPorts,... }:
 
-{
+rec {
   system.activationScripts.mountSharedDirectory = { 
     text =''
       printf "mounting shared directory\n"
@@ -48,6 +48,18 @@
     };
   };
 
+  # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
+  # Ref. https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-i-installation/installing-ghc-and-cabal
+  environment.variables = {
+    # Set an environment variable indicating the file path to configuration files and scripts
+    # related to operating your Cardano node
+    NODE_HOME = vars.cardanoNode.nodeHome;
+    # Set an environment variable indicating the Cardano network cluster where your node runs
+    NODE_CONFIG = vars.cardanoNode.nodeConfig;
+    # Set an environment variable indicating where the Cardano node socket file is located
+    CARDANO_NODE_SOCKET_PATH = "${vars.cardanoNode.nodeHome}/db/socket";
+  };
+
   # If you perform changes to the dashboard while the VM is running,
   # you can copy the dashboard JSON and paste it into proper file in the repository.
   # (!) If you don't do that, you would lose the changes if nixos.qcow2 file is removed.
@@ -82,7 +94,7 @@
   # If true, this will generate a new key if the key specified above does not exist
   sops.age.generateKey = false;
   # This is the actual specification of the secrets.
-  sops.secrets.alice-password = {};
+  sops.secrets.alice-password-hash = {};
 
   # Use the GRUB 2 boot loader.
   boot.loader.grub.enable = true;
@@ -140,12 +152,12 @@
   # services.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  sops.secrets.alice-password.neededForUsers = true;
+  sops.secrets.alice-password-hash.neededForUsers = true;
   users.users.alice = {
     isNormalUser = true;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     # password = "123";
-    hashedPasswordFile = config.sops.secrets.alice-password.path;
+    hashedPasswordFile = config.sops.secrets.alice-password-hash.path;
     packages = with pkgs; [
       tree
       cardano-node
@@ -172,13 +184,18 @@
   # };
 
   # List of systemd services available
+  # cardano-node service is written following the guidelines from:
+  # https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-ii-configuration/creating-startup-scripts
   systemd.services.cardano-node = let
     cardanoStartupScript = pkgs.writeShellApplication {
-      name = "start-cardano";
+      name = "startCardanoNode.sh";
       text = ''
       # Ensure directories exist
-      mkdir -p /persistent${vars.vm.sharedFolder}/cardano-db
+      mkdir -p ${environment.variables.NODE_HOME}/db
       
+      # Copy config files (if they are not there) from /etc/ according to NODE_CONFIG
+      cp -n /etc/cardano-configs-${environment.variables.NODE_CONFIG}/* ${environment.variables.NODE_HOME}/
+
       # Wait for network interface to be available
       INTERFACE="eth1"
       RETRY_COUNT=0
@@ -203,14 +220,27 @@
         exit 1
       fi
       
+      # NOTE: We need to use this in order to make auditor COINCASHEW mode worked!
+      # Set a variable to indicate the port where the Cardano Node listens
+      PORT=3001
+      # Set a variable to indicate the local IP address of the computer where Cardano Node runs
+      HOSTADDR="$IP"
+      # Set a variable to indicate the file path to your topology file
+      TOPOLOGY=${environment.variables.NODE_HOME}/topology.json
+      # Set a variable to indicate the folder where Cardano Node stores blockchain data
+      DB_PATH=${environment.variables.NODE_HOME}/db
+      # Set a variable to indicate the path to the Cardano Node socket for Inter-process communication (IPC)
+      SOCKET_PATH=${environment.variables.CARDANO_NODE_SOCKET_PATH}
+      # Set a variable to indicate the file path to your main Cardano Node configuration file
+      CONFIG=${environment.variables.NODE_HOME}/config.json
       echo "Starting cardano-node with IP: $IP"
       exec ${pkgs.cardano-node}/bin/cardano-node run \
-        --topology /etc/cardano-configs-mainnet/topology.json \
-        --database-path /persistent${vars.vm.sharedFolder}/cardano-db \
-        --socket-path /persistent${vars.vm.sharedFolder}/cardano-db/node.socket \
-        --host-addr "$IP" \
-        --port 3001 \
-        --config /etc/cardano-configs-mainnet/config.json
+        --topology "$TOPOLOGY" \
+        --database-path "$DB_PATH" \
+        --socket-path "$SOCKET_PATH" \
+        --host-addr "$HOSTADDR" \
+        --port "$PORT" \
+        --config "$CONFIG"
     '';
   };
   in {
@@ -223,14 +253,18 @@
     serviceConfig = {
       Type = "simple";
       User = "alice";
+      KillSignal = "SIGINT";
+      RestartKillSignal = "SIGINT";
+      TimeoutStopSec = "300s"; # Give it up to 5 minutes to shut down cleanly
+      LimitNOFILE = 32768; # Increase file descriptor limit if necessary
       Group = "users";
-      ExecStart = "${cardanoStartupScript}/bin/start-cardano";
-      Restart = "on-failure";
-      RestartSec = "10s";
+      ExecStart = "${cardanoStartupScript}/bin/startCardanoNode.sh";
+      Restart = "always";
+      RestartSec = "5s";
+      SyslogIdentifier = "cardano-node";
     };
     path = [ pkgs.cardano-node pkgs.iproute2 ];
   };
-  # List services that you want to enable:
 
   # Enable the OpenSSH daemon.
   services.openssh = {
@@ -342,6 +376,8 @@
         {
           # To scrape data from the Cardano node
           job_name = "cardano-node";
+          # For targets exposing metrics in the standard Prometheus text format.
+          fallback_scrape_protocol = "PrometheusText0.0.4";
           static_configs = [{
             targets = [ "localhost:12798" ];
           }];
