@@ -302,12 +302,28 @@ security_checks() {
         if [ "$(systemctl is-active ufw)" == "active" ]; then
             echo -e " [\e[1;32mOK\e[0m] Service ufw (firewall) is active"
         else
+            # PATCH: UFW is not installed by design, since firewalling is managed directly through NixOS configuration.
+            # This does not affect security or compliance, as the defined iptables rules enforce the required restrictions.
+            # To verify compliance, run the provided command to list the active firewall rules and confirm the expected ports are open.
             echo -e " [\e[1;31mKO\e[0m] Service ufw (firewall) is not active. Make sure you have a proper firewalling system up"
+            echo "     ⚠ However, NixOS firewall rules are managed by iptables."
+            echo "     The following TCP ports are explicitly allowed:"
+            for port in $PORT; do
+                echo "     → Port $port"
+            done
+            echo "     (everything else is blocked by default)"
+            echo "     To check manually, run:"
+            echo "       sudo iptables -S nixos-fw"
         fi
         if [ "$(systemctl show -p SubState --value unattended-upgrades)" == "running" ]; then
             echo -e " [\e[1;32mOK\e[0m] Service unattended-upgrades is running"
         else
+            # PATCH: Unattended updates are intentionally not enabled on NixOS.
+            # NixOS relies on declarative, user-driven upgrades to ensure system stability and reproducibility.
+            # Security compliance is maintained by the system administrator applying updates through the standard NixOS upgrade process.
             echo -e " [\e[1;31mKO\e[0m] Service unattended-upgrades is not running. You should setup automatic security updates"
+            echo -e "     → On NixOS this warning can be ignored, because automatic updates are not recommended."
+            echo -e "       System upgrades should be applied explicitly by the system administrator using flakes or channels."
         fi
         if [ "$(systemctl show -p SubState --value fail2ban)" == "running" ]; then
             echo -e " [\e[1;32mOK\e[0m] Service fail2ban is running"

@@ -1,3 +1,4 @@
+{  configEnv }:
 final: prev: {
 
   cardano-auditor = with final; stdenv.mkDerivation {
@@ -13,7 +14,8 @@ final: prev: {
       cp audit-cardano-node.sh $out/bin/cardano-auditor
       chmod +x $out/bin/cardano-auditor
       wrapProgram $out/bin/cardano-auditor \
-        --prefix PATH : ${lib.makeBinPath [jq coreutils ]}
+        --prefix PATH : ${lib.makeBinPath [jq coreutils ]} \
+        --set PORT "${configEnv.PORTS}"
     '';
     };
 }

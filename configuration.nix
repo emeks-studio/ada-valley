@@ -2,7 +2,7 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, vars,... }:
+{ config, lib, pkgs, vars, configurationPorts,... }:
 
 rec {
   system.activationScripts.mountSharedDirectory = { 
@@ -65,6 +65,15 @@ rec {
   # (!) If you don't do that, you would lose the changes if nixos.qcow2 file is removed.
   environment.etc."grafana-dashboards" = {
     source = pkgs.grafana-dashboards;
+  };
+
+  # fail2ban custom filter for sshd invalid public keys
+  environment.etc = {
+    "fail2ban/filter.d/sshd-nixos.local".text = pkgs.lib.mkDefault (pkgs.lib.mkAfter ''
+      [Definition]
+      failregex = ^.*sshd-session\[\d+\]: Failed publickey for .* from <HOST> port \d+ ssh2.*$
+      ignoreregex =
+    '');
   };
 
   # This tutorial focuses on testing NixOS configurations on a virtual machine. 
@@ -271,6 +280,36 @@ rec {
     };
   };
 
+  services.fail2ban = {
+    enable = true;
+    maxretry = 5;
+    bantime = "24h";
+    bantime-increment = {
+      enable = true; # Enable increment of bantime after each violation
+      multipliers = "1 2 4 8 16 32 64";
+      maxtime = "168h"; # Do not ban for more than 1 week
+      overalljails = true; # Calculate the bantime based on all the violations
+    };
+    ignoreIP = [
+      # Whitelist subnets
+      "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16"
+      "8.8.8.8" # google dns
+      "nixos.wiki" # resolve the IP via DNS
+    ];
+    jails = {
+      sshd.settings = {
+        enabled = true;
+        backend = "systemd";
+      };
+      sshd-nixos.settings = {
+        enabled = true;
+        filter = "sshd-nixos";
+        backend = "systemd";
+        action = ''%(action_)s[blocktype=DROP]'';
+      };
+    };
+  };
+
   # TODO: Analize if at some point we need chrony with NTS turning on for more secure time synchronization.
   # Enable chrony for accurate time synchronization (critical for Cardano stake pools)
   # Cheatsheet:
@@ -396,9 +435,11 @@ rec {
   # Open ports in the firewall Or disable the firewall altogether.
   networking.firewall = {
     enable = true;
+    # This prevents ip spoofing attacks
+    checkReversePath = "loose";
     # Open ports in the firewall.
-    allowedTCPPorts = [ 22 80 9090 9100 12798 4001];
-    # allowedUDPPorts = [ ... ];
+    allowedTCPPorts = configurationPorts;
+    allowedUDPPorts = [];
     # Add your custom iptables rule here
     # extraCommands = "";
     # If you have specific output rules you also need to allow, you can add them to extraCommandsOutput:

@@ -48,11 +48,15 @@
       system = "x86_64-linux";
       vm_runner = "./result/bin/run-nixos-vm";
       pkgs = nixpkgs.legacyPackages.${system};
+      configurationPorts = [22 80 9090 9100 12798 4001];
+      configEnv = {
+        PORTS = builtins.concatStringsSep " " (map toString configurationPorts);
+      };
     in {
     nixosConfigurations = {
       nixos-vm = nixpkgs.lib.nixosSystem {
         system = "${system}";
-        specialArgs = { inherit vars; };
+        specialArgs = { inherit vars configurationPorts; };
         modules = [ 
             {  nixpkgs.overlays = [
                   (prev: final: {
@@ -63,7 +67,7 @@
                   (import ./overlays/cardano-configs-testnet-preprod.nix)
                   (import ./overlays/cardano-configs-mainnet.nix)
                   (import ./overlays/grafana-dashboards.nix)
-                  (import ./overlays/cardano-auditor.nix)
+                  (import ./overlays/cardano-auditor.nix { inherit configEnv; })
               ];
             }
             ({ config, pkgs, ...}: {
