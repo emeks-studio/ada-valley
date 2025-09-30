@@ -993,15 +993,14 @@
     "ssh-keys": {
       "flake": false,
       "locked": {
-        "lastModified": 1,
-        "narHash": "sha256-DormJAENQPEuyF/+FuRxfg0Rp1QIz5+3xt79hIv6eDE=",
         "path": "./ssh-keys",
         "type": "path"
       },
       "original": {
         "path": "./ssh-keys",
         "type": "path"
-      }
+      },
+      "parent": []
     },
     "stackage": {
       "flake": false,
@@ -1055,15 +1054,14 @@
     "varsFilePath": {
       "flake": false,
       "locked": {
-        "lastModified": 1,
-        "narHash": "sha256-oAz6wU8qzg1wMU2OwYMmgevTJ9/PdaUBucRAWXydb8k=",
         "path": "./vars-template.nix",
         "type": "path"
       },
       "original": {
         "path": "./vars-template.nix",
         "type": "path"
-      }
+      },
+      "parent": []
     }
   },
   "root": "root",

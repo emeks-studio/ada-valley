@@ -2,7 +2,7 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, vars,... }:
+{ config, lib, pkgs, vars, configurationPorts,... }:
 
 {
   system.activationScripts.mountSharedDirectory = { 
@@ -402,7 +402,7 @@
     # This prevents ip spoofing attacks
     checkReversePath = "loose";
     # Open ports in the firewall.
-    allowedTCPPorts = [22 80 9090 9100 12798 4001];
+    allowedTCPPorts = configurationPorts;
     allowedUDPPorts = [];
     # Add your custom iptables rule here
     # extraCommands = "";
