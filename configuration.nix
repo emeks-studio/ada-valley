@@ -30,6 +30,7 @@ rec {
     enable = true;  # NB: Defaults to true, not needed
     hideMounts = true;
     directories = [
+      "/var/lib/tailscale"
       "${vars.vm.sharedFolder}"
       # { directory = "/mnt/share/alice"; user = "alice"; mode = "u=rwx,g=rx,o="; }
     ];
@@ -280,6 +281,20 @@ rec {
     };
   };
 
+  # Enable tailscale
+  sops.secrets.tailscale-auth-key = {
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+
+  services.tailscale = {
+    enable = true;
+    # openFirewall = true;
+    authKeyFile = config.sops.secrets.tailscale-auth-key.path;
+  };
+
+  # Enable fail2ban
   services.fail2ban = {
     enable = true;
     maxretry = 5;
@@ -439,7 +454,7 @@ rec {
     checkReversePath = "loose";
     # Open ports in the firewall.
     allowedTCPPorts = configurationPorts;
-    allowedUDPPorts = [];
+    allowedUDPPorts = [41641];
     # Add your custom iptables rule here
     # extraCommands = "";
     # If you have specific output rules you also need to allow, you can add them to extraCommandsOutput:
