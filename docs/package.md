@@ -50,13 +50,10 @@ Credentials:
 - Username: `alice`
 - Password: `#####` 
 
-Note: In order to get Alice's password, decrypt the secrets file and look for `alice-password` value.
-
-```sh
-nix-shell -p sops --run "export SOPS_AGE_KEY_FILE=/usr/share/ada-valley/age-password.key; sops -d ./secrets/keys.enc.yaml"
-```
-
-
+> ℹ️ Alice's password is stored in the secrets file. Follow the
+> [decryption instructions](./setup.md#decrypt-the-secrets-file-plain-text)
+> to access the plain-text content and retrieve the value of the
+> `alice-password` key.
 
 ### Via SSH
 
