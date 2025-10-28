@@ -432,6 +432,16 @@ rec {
       };
   };
 
+  systemd.services.enforce-dev-shm-options = {
+    after = [ "local-fs.target" ];
+    wantedBy = [ "multi-user.target" ];
+    script = "${pkgs.util-linux}/bin/mount -o remount,ro,noexec,nosuid,nodev,size=50% tmpfs /dev/shm";
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+  };
+
   # Open ports in the firewall Or disable the firewall altogether.
   networking.firewall = {
     enable = true;
