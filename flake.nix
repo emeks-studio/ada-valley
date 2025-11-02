@@ -56,27 +56,44 @@
       configEnv = {
         PORTS = builtins.concatStringsSep " " (map toString configurationPorts);
       };
+      nodeOverlays = [
+        (prev: final: {
+          cardano-cli = cardano-node.packages.${final.system}.cardano-cli;
+          cardano-node = cardano-node.packages.${final.system}.cardano-node;
+        })
+        (import ./overlays/cardano-configs-testnet-preview.nix)
+        (import ./overlays/cardano-configs-testnet-preprod.nix)
+        (import ./overlays/cardano-configs-mainnet.nix)
+        (import ./overlays/grafana-dashboards.nix)
+        (import ./overlays/cardano-auditor.nix { inherit configEnv; })
+      ];
     in {
 
     packages.${system} = {
-      cardano-qemu-vm = nixos-generators.nixosGenerate {
+      bichota-iso = nixos-generators.nixosGenerate {
         system = "${system}";
+        format = "iso";
+        specialArgs = {
+          inherit vars configurationPorts;
+        };
+        # FIXME: We need to handle the ssh keys setup! and remove from configuration.nix the vm related stuff
+        modules = [
+          {  nixpkgs.overlays = nodeOverlays; }
+          impermanence.nixosModules.impermanence
+          sops-nix.nixosModules.sops
+          # Apply the rest of the config.
+          ./configuration.nix
+        ];
+      };
+
+      bichota-qemu-vm = nixos-generators.nixosGenerate {
+        system = "${system}";
+        format = "vm"; # only used as a qemu-kvm runner
         specialArgs = {
           inherit vars configurationPorts;
         };
         modules = [
-          {  nixpkgs.overlays = [
-                (prev: final: {
-                  cardano-cli = cardano-node.packages.${final.system}.cardano-cli;
-                  cardano-node = cardano-node.packages.${final.system}.cardano-node;
-                })
-                (import ./overlays/cardano-configs-testnet-preview.nix)
-                (import ./overlays/cardano-configs-testnet-preprod.nix)
-                (import ./overlays/cardano-configs-mainnet.nix)
-                (import ./overlays/grafana-dashboards.nix)
-                (import ./overlays/cardano-auditor.nix { inherit configEnv; })
-            ];
-          }
+          {  nixpkgs.overlays = nodeOverlays; }
           ({ config, pkgs, ...}: {
               # Move fileSystems and virtualisation to a separate module!
               fileSystems."${vars.vm.sharedFolder}" = {
@@ -102,7 +119,6 @@
           # Apply the rest of the config.
           ./configuration.nix
         ];
-        format = "vm"; # only used as a qemu-kvm runner
       };
 
       start-vm = pkgs.writeShellApplication {
@@ -116,7 +132,7 @@
 
           if [ ! -x "$VM_RUNNER" ] ; then
             echo "Error VM not found"
-            echo "Try to generate it with: nix build .#cardano-qemu-vm"
+            echo "Try to generate it with: nix build .#bichota-qemu-vm"
             exit 1
           fi
 
@@ -134,10 +150,11 @@
         text = ''
           echo
           echo "Available commands:"
-          echo "  nix build .#cardano-qemu-vm --override-input varsFilePath path:./vars.nix     - Build the NixOS VM"
-          echo "  nix run .#start-vm                                                                                                - Run the VM with QEMU"
-          echo "  nix run .#help                                                                                                    - Show this help message"
-          echo "  nix run .#show                                                                                                    - Show vm startup command"
+          echo "  nix build .#bichota-iso --override-input varsFilePath path:./vars.nix         - Build the NixOS .iso"
+          echo "  nix build .#bichota-qemu-vm --override-input varsFilePath path:./vars.nix     - Build the NixOS QEMU VM RUNNER"
+          echo "  nix run .#start-vm                                                            - Run the NixOS VM with QEMU"
+          echo "  nix run .#help                                                                - Show this help message"
+          echo "  nix run .#show                                                                - Show vm startup command"
         '';
       };
       show = pkgs.writeShellApplication {
