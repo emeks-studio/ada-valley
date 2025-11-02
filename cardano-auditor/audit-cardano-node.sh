@@ -382,7 +382,13 @@ security_checks() {
             current_value=$(grep -E "^net.ipv4.icmp_echo_ignore_broadcasts" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.icmp_echo_ignore_broadcasts = "$current_value " Expected value : "$expected_value
         else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.icmp_echo_ignore_broadcasts = 1"
+            # PATCH: Avoid smurf attacks.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.icmp_echo_ignore_broadcasts=1"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.icmp_echo_ignore_broadcasts = 1"
+            fi
         fi
     fi
     sleep 1
@@ -396,8 +402,14 @@ security_checks() {
         if grep -qE "^net.ipv4.icmp_ignore_bogus_error_responses" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.icmp_ignore_bogus_error_responses" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.icmp_ignore_bogus_error_responses = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.icmp_ignore_bogus_error_responses = 1"
+        else
+            # PATCH: Bad ICMP error messages protection.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.icmp_ignore_bogus_error_responses=1"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.icmp_ignore_bogus_error_responses = 1"
+            fi
         fi
     fi
     sleep 1
@@ -411,8 +423,14 @@ security_checks() {
         if grep -qE "^net.ipv4.tcp_syncookies" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.tcp_syncookies" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.tcp_syncookies = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.tcp_syncookies = 1"
+        else
+            # PATCH: SYN flood attack protection.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.tcp_syncookies\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.tcp_syncookies=1"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.tcp_syncookies = 1"
+            fi
         fi
     fi
 
@@ -426,8 +444,14 @@ security_checks() {
         if grep -qE "^net.ipv4.conf.all.accept_redirects" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.conf.all.accept_redirects" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.conf.all.accept_redirects = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.all.accept_redirects = 0"
+        else
+            # PATCH: Disable Redirects.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.conf.all.accept_redirects\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.conf.all.accept_redirects=0"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.all.accept_redirects = 0"
+            fi
         fi
     fi
     if grep -qE "^net.ipv4.conf.default.accept_redirects\s*=\s*$expected_value" /etc/sysctl.conf; then
@@ -436,8 +460,14 @@ security_checks() {
         if grep -qE "^net.ipv4.conf.default.accept_redirects" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.conf.default.accept_redirects" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.conf.default.accept_redirects = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.default.accept_redirects = 0"
+        else
+            # PATCH: Disable Redirects.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.conf.default.accept_redirects\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+            echo -e " [\033[1;32mOK\033[0m] net.ipv4.conf.default.accept_redirects=0"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.default.accept_redirects = 0"
+            fi
         fi
     fi
     if grep -qE "^net.ipv4.conf.all.secure_redirects\s*=\s*$expected_value" /etc/sysctl.conf; then
@@ -446,8 +476,14 @@ security_checks() {
         if grep -qE "^net.ipv4.conf.all.secure_redirects" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.conf.all.secure_redirects" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.conf.all.secure_redirects = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.all.secure_redirects = 0"
+        else
+            # PATCH: Disable Redirects.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.conf.all.secure_redirects\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.conf.all.secure_redirects=0"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.all.secure_redirects = 0"
+            fi
         fi
     fi
 
@@ -461,8 +497,14 @@ security_checks() {
         if grep -qE "^net.ipv4.ip_forward" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.ip_forward" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.ip_forward = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.ip_forward = 0"
+        else
+            # PATCH: Disable packet forwarding.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.ip_forward\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.ip_forward=0"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.ip_forward = 0"
+            fi
         fi
     fi
 
@@ -476,8 +518,14 @@ security_checks() {
         if grep -qE "^net.ipv4.tcp_synack_retries" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.tcp_synack_retries" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.tcp_synack_retries = "$current_value " A fine value would be : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.tcp_synack_retries = 5"
+        else
+            # PATCH: Synflood protection.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.tcp_synack_retries\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.tcp_synack_retries=5"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.tcp_synack_retries = 5"
+            fi
         fi
     fi
 
@@ -491,8 +539,14 @@ security_checks() {
         if grep -qE "^net.ipv4.conf.all.accept_source_route" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.conf.all.accept_source_route" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.conf.all.accept_source_route = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.all.accept_source_route = 0"
+        else
+            # PATCH: Refuse source routed packets.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.conf.all.accept_source_route\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.conf.all.accept_source_route=0"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.all.accept_source_route = 0"
+            fi
         fi
     fi
     if grep -qE "^net.ipv4.conf.default.accept_source_route\s*=\s*$expected_value" /etc/sysctl.conf; then
@@ -501,8 +555,14 @@ security_checks() {
         if grep -qE "^net.ipv4.conf.default.accept_source_route" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.conf.default.accept_source_route" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.conf.default.accept_source_route = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.default.accept_source_route = 0"
+        else
+            # PATCH: Refuse source routed packets.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.conf.default.accept_source_route\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.conf.default.accept_source_route=0"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.default.accept_source_route = 0"
+            fi
         fi
     fi
     sleep 1
@@ -516,8 +576,14 @@ security_checks() {
         if grep -qE "^net.ipv4.conf.all.log_martians" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.conf.all.log_martians" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.conf.all.log_martians = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.all.log_martians = 1"
+        else
+            # PATCH: Log spoofed, source routed, and redirect packets.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.conf.all.log_martians\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.conf.all.log_martians=1"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.all.log_martians = 1"
+            fi
         fi
     fi
     if grep -qE "^net.ipv4.conf.default.log_martians\s*=\s*$expected_value" /etc/sysctl.conf; then
@@ -526,8 +592,14 @@ security_checks() {
         if grep -qE "^net.ipv4.conf.default.log_martians" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.conf.default.log_martians" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.conf.default.log_martians = "$current_value " Expected value : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.default.log_martians = 1"
+        else
+            # PATCH: Log spoofed, source routed, and redirect packets.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.conf.default.log_martians\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.conf.default.log_martians=1"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.conf.default.log_martians = 1"
+            fi
         fi
     fi
 
@@ -541,8 +613,14 @@ security_checks() {
         if grep -qE "^net.ipv4.tcp_rmem" /etc/sysctl.conf; then
             current_value=$(grep -E "^net.ipv4.tcp_rmem" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.tcp_rmem = "$current_value " A fine value would be : "$expected_value
-    else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.tcp_rmem = "$expected_value
+        else
+            # PATCH: Increase TCP max buffer size.
+            # sysctl configuration in nixos is located in another place, so this conditional will check the propper configuration file
+            if grep -qE "^net.ipv4.tcp_rmem\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.tcp_rmem = 4096 87380 8388608"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.tcp_rmem = "$expected_value
+            fi
         fi
     fi
     if grep -qE "^net.ipv4.tcp_wmem\s*=\s*$expected_value" /etc/sysctl.conf; then
@@ -552,7 +630,11 @@ security_checks() {
             current_value=$(grep -E "^net.ipv4.tcp_wmem" /etc/sysctl.conf | awk -F= '{print $2}' | tr -d '[:space:]')
             echo -e " [\033[1;33mWARNING\033[0m] net.ipv4.tcp_wmem = "$current_value " A fine value would be : "$expected_value
         else
-            echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.tcp_wmem = "$expected_value
+            if grep -qE "^net.ipv4.tcp_wmem\s*=\s*$expected_value" /etc/sysctl.d/*-nixos.conf ; then
+                echo -e " [\033[1;32mOK\033[0m] net.ipv4.tcp_wmem = 4096 87380 8388608"
+            else
+                echo -e " [\033[1;31mKO\033[0m] Not found. You should add : net.ipv4.tcp_wmem = "$expected_value
+            fi
         fi
     fi
 }
