@@ -55,14 +55,32 @@ Credentials:
 > to access the plain-text content and retrieve the value of the
 > `alice-password` key.
 
-### Via SSH
+### Via SSH (LAN)
 
 ```sh
 ssh alice@VM_IP
 ```
 
-> ℹ️ You can discover the VM's internal IP from the host (without logging in directly) using a command like:\
+> ℹ️ You can discover the VM's internal IP from the host (without logging in
+> directly) using a command like:\
 > `sudo arp-scan --interface=br0 192.168.1.0/24`\
+
+### Via SSH (Remotely)
+
+The VM is configured to auto-connect to a Tailscale network.
+See the [setup instructions](./setup.md#tailscale-auth-key) for details on key
+validity, expiration, and renewal.
+
+Once your local machine is connected to the same Tailnet, you can SSH into the
+VM:
+
+```sh
+ssh alice@TAILSCALE_IP
+```
+
+> ℹ️ You can find the VM's Tailscale IP from the
+> [Tailscale admin console](https://login.tailscale.com/admin/machines)
+> or by running `tailscale status` on a connected machine.
 
 ## Update the VM
 

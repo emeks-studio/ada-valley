@@ -14,7 +14,7 @@ Cardano ADA Stake operator infra.
 ## Documentation
 
 1. [Shared Folder & SSH Key](docs/setup.md)
-2. [Secrets Management](docs/setup.md#accessing-secrets)
+2. [Secrets Management](docs/setup.md#secrets)
 3. [Network Setup](docs/network.md)
 4. [Package Commands & Build](docs/package.md)
 5. [Cardano Node Usage](docs/node.md)

@@ -23,7 +23,7 @@ Once you've created the shared folder, make sure to update
 [vars.nix](../vars-template.nix) by setting the path under `vm.sharedFolder`
 for use by the VM.
 
-## Add SSH Public Key
+## SSH Public Keys
 
 The virtual machine accepts SSH connections only from authorized public keys.
 To grant a user access, place their key in the [ssh-keys](../ssh-keys/)
@@ -34,12 +34,48 @@ directory.
 - The listed keys define which users are permitted to log in via SSH under that
   username.
 
-## Accessing Secrets
+## Tailscale Auth Key
+
+The VM is configured to auto-connect to a [Tailscale](https://tailscale.com/)
+network, allowing remote access without needing to discover the internal IP.
+It uses a pre-configured Tailscale _auth-key_ stored in the
+[secrets](#secrets) file for initial authentication.
+
+> ⚠️ The current Tailnet's _auth-key_ was created on **October 14, 2025**.\
+> The key is valid for 90 days and is reusable. However, for production
+> deployments, it's recommended to generate a new one and isolate the
+> network appropriately.
+
+### Behavior
+
+**First time**\
+The VM will automatically authenticate and join the Tailnet on first boot,
+as long as the _auth-key_ is valid.
+
+**After a rebuild or wipe**\
+If the VM is rebuilt or the Tailscale state directory is removed, it will
+attempt to re-authenticate using the _auth-key_ on next boot, provided the
+key is still active.
+
+**Once authenticated**\
+The VM will stay part of the Tailnet for the duration of its _node-key_
+expiration time (usually 180 days by default).
+This expiration behavior can be disabled from the Tailscale admin console.
+
+To avoid losing access before the VM locks itself out due to _node-key_
+expiration, you can create a new _auth-key_ and force a re-authentication
+by connecting to the VM and running:
+
+```sh
+sudo tailscale up --force-reauth --auth-key=NEW_AUTH_KEY
+```
+
+## Secrets
 
 ### Generate an age key
 
 An [age](https://github.com/FiloSottile/age) key is needed to decrypt
-[secrets](../secrets/keys.enc.yaml) and authenticate within the VM.
+[secrets files](../secrets/keys.enc.yaml) and authenticate within the VM.
 
 ```sh
 nix-shell -p age --run "age-keygen -o /usr/share/ada-valley/age-password.key"
