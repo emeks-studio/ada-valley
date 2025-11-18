@@ -76,13 +76,12 @@
         specialArgs = {
           inherit vars configurationPorts;
         };
-        # FIXME: We need to handle the ssh keys setup! and remove from configuration.nix the vm related stuff
         modules = [
           {  nixpkgs.overlays = nodeOverlays; }
           impermanence.nixosModules.impermanence
           sops-nix.nixosModules.sops
           # Apply the rest of the config.
-          ./configuration.nix
+          ./iso-configuration.nix
         ];
       };
 
@@ -117,7 +116,7 @@
           impermanence.nixosModules.impermanence
           sops-nix.nixosModules.sops
           # Apply the rest of the config.
-          ./configuration.nix
+          ./vm-configuration.nix
         ];
       };
 
