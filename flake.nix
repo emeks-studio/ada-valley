@@ -70,6 +70,12 @@
     in {
 
     packages.${system} = {
+
+      # Note: In order to use this with VirtualBox you need to disable:
+      # sudo modprobe -r kvm_intel 
+      # ^ For Intel CPUs or kvm_amd for AMD CPUs
+      # And in case you want to re-enable it:
+      # sudo modprobe kvm_intel
       bichota-iso = nixos-generators.nixosGenerate {
         system = "${system}";
         format = "iso";
@@ -81,7 +87,7 @@
           impermanence.nixosModules.impermanence
           sops-nix.nixosModules.sops
           # Apply the rest of the config.
-          ./iso-configuration.nix
+          ./configuration-iso.nix
         ];
       };
 
@@ -116,7 +122,7 @@
           impermanence.nixosModules.impermanence
           sops-nix.nixosModules.sops
           # Apply the rest of the config.
-          ./vm-configuration.nix
+          ./configuration-vm.nix
         ];
       };
 

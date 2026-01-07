@@ -3,6 +3,19 @@
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
 { config, lib, pkgs, vars, ... }: {
+  
+  # Repeated section with configuration-vm
+  environment.etc = {
+    cardano-configs-testnet-preview = {
+      source = pkgs.cardano-configs-testnet-preview;
+    };
+    cardano-configs-testnet-preprod = {
+      source = pkgs.cardano-configs-testnet-preprod;
+    };
+    cardano-configs-mainnet = {
+      source = pkgs.cardano-configs-mainnet;
+    };
+  };
   # This option defines the first version of NixOS you have installed on this particular machine,
   # and is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions.
   #
@@ -18,7 +31,7 @@
   #
   # Do NOT change this value unless you have manually inspected all the changes it would make to your configuration,
   # and migrated your data accordingly.
-  #
+  #nixosConfigurations.vm.config.system.build.vm
   # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
   system.stateVersion = "24.11"; # Did you read the comment?
 }
