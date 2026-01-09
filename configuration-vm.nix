@@ -36,6 +36,18 @@ rec {
     ];
   };
 
+  # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
+  # Ref. https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-i-installation/installing-ghc-and-cabal
+  environment.variables = {
+    # Set an environment variable indicating the file path to configuration files and scripts
+    # related to operating your Cardano node
+    NODE_HOME = "/persistent${vars.vm.sharedFolder}/${vars.cardanoNode.nodeWorkingDirectoryName}";
+    # Set an environment variable indicating the Cardano network cluster where your node runs
+    NODE_CONFIG = vars.cardanoNode.nodeConfig;
+    # Set an environment variable indicating where the Cardano node socket file is located
+    CARDANO_NODE_SOCKET_PATH = "/persistent${vars.vm.sharedFolder}/${vars.cardanoNode.nodeWorkingDirectoryName}/db/socket";
+  };
+
   # Can these configs files be modified in subsequents runs? should be moved them into persistent storage?
   environment.etc = {
     cardano-configs-testnet-preview = {
@@ -47,18 +59,6 @@ rec {
     cardano-configs-mainnet = {
       source = pkgs.cardano-configs-mainnet;
     };
-  };
-
-  # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
-  # Ref. https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-i-installation/installing-ghc-and-cabal
-  environment.variables = {
-    # Set an environment variable indicating the file path to configuration files and scripts
-    # related to operating your Cardano node
-    NODE_HOME = vars.cardanoNode.nodeHome;
-    # Set an environment variable indicating the Cardano network cluster where your node runs
-    NODE_CONFIG = vars.cardanoNode.nodeConfig;
-    # Set an environment variable indicating where the Cardano node socket file is located
-    CARDANO_NODE_SOCKET_PATH = "${vars.cardanoNode.nodeHome}/db/socket";
   };
 
   # If you perform changes to the dashboard while the VM is running,

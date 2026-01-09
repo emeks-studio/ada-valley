@@ -7,7 +7,7 @@ rec {
   cardanoNode = {
     # Variable indicating the file path to configuration files and scripts
     # related to operating your Cardano node
-    nodeHome = "/persistent${vm.sharedFolder}/cardano-node";
+    nodeWorkingDirectoryName = "cardano-node";
     # Variable indicating the Cardano 
     # network cluster where your node runs. Available options:
     # "mainnet", "testnet-preprod", "testnet-preview"

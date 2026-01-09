@@ -2,8 +2,48 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, vars, configurationPorts, ... }: {
-  
+{ config, lib, pkgs, vars, configurationPorts, ... }:
+
+rec {
+  system.activationScripts.createCardanoNodeWorkingDirectory = {
+    text =''
+      printf "creating cardano node working directory\n"
+      mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
+    '';
+    deps = ["specialfs"]; 
+  };
+  system.activationScripts.setupSecretsForUsers.deps = ["createCardanoNodeWorkingDirectory"];
+
+  system.activationScripts.setupRightOwnershipPublickeys = {
+    text = ''
+      for file in /etc/ssh/authorized_keys.d/*; do
+        user=$(basename "$file" .pub)
+        if id "$user" > /dev/null 2>&1; then
+          chown "$user:users" "$file"
+        fi
+      done
+    '';
+  };
+
+  environment.persistence."/persistent" = {
+    enable = true;  # NB: Defaults to true, not needed
+    hideMounts = true;
+    directories = [
+      "/${vars.cardanoNode.nodeWorkingDirectoryName}"
+    ];
+  };
+  # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
+  # Ref. https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-i-installation/installing-ghc-and-cabal
+  environment.variables = {
+    # Set an environment variable indicating the file path to configuration files and scripts
+    # related to operating your Cardano node
+    NODE_HOME = "/persistent/${vars.cardanoNode.nodeWorkingDirectoryName}";
+    # Set an environment variable indicating the Cardano network cluster where your node runs
+    NODE_CONFIG = vars.cardanoNode.nodeConfig;
+    # Set an environment variable indicating where the Cardano node socket file is located
+    CARDANO_NODE_SOCKET_PATH = "/persistent/${vars.cardanoNode.nodeWorkingDirectoryName}/db/socket";
+  };
+
   environment.etc = {
     cardano-configs-testnet-preview = {
       source = pkgs.cardano-configs-testnet-preview;
@@ -72,6 +112,89 @@
       cardano-cli
       cardano-auditor
     ];
+  };
+
+  # List of systemd services available
+  # cardano-node service is written following the guidelines from:
+  # https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-ii-configuration/creating-startup-scripts
+  systemd.services.cardano-node = let
+    cardanoStartupScript = pkgs.writeShellApplication {
+      name = "startCardanoNode.sh";
+      text = ''
+      # Ensure directories exist
+      mkdir -p ${environment.variables.NODE_HOME}/db
+      
+      # Copy config files (if they are not there) from /etc/ according to NODE_CONFIG
+      cp -n /etc/cardano-configs-${environment.variables.NODE_CONFIG}/* ${environment.variables.NODE_HOME}/
+
+      # Wait for network interface to be available
+      INTERFACE="eth1"
+      RETRY_COUNT=0
+      MAX_RETRIES=30
+      
+      while ! ip link show $INTERFACE &>/dev/null && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        echo "Waiting for interface $INTERFACE to be available... ($RETRY_COUNT/$MAX_RETRIES)"
+        sleep 1
+        RETRY_COUNT=$((RETRY_COUNT+1))
+      done
+      
+      if ! ip link show $INTERFACE &>/dev/null; then
+        echo "Interface $INTERFACE not found after waiting. Exiting."
+        exit 1
+      fi
+      
+      # Get the IP address
+      IP=$(${pkgs.iproute2}/bin/ip -o -4 addr show dev "$INTERFACE" | grep -oP "(?<=inet\s)\d+(\.\d+){3}")
+      
+      if [ -z "$IP" ]; then
+        echo "No IP address found for interface $INTERFACE. Exiting."
+        exit 1
+      fi
+      
+      # NOTE: We need to use this in order to make auditor COINCASHEW mode worked!
+      # Set a variable to indicate the port where the Cardano Node listens
+      PORT=3001
+      # Set a variable to indicate the local IP address of the computer where Cardano Node runs
+      HOSTADDR="$IP"
+      # Set a variable to indicate the file path to your topology file
+      TOPOLOGY=${environment.variables.NODE_HOME}/topology.json
+      # Set a variable to indicate the folder where Cardano Node stores blockchain data
+      DB_PATH=${environment.variables.NODE_HOME}/db
+      # Set a variable to indicate the path to the Cardano Node socket for Inter-process communication (IPC)
+      SOCKET_PATH=${environment.variables.CARDANO_NODE_SOCKET_PATH}
+      # Set a variable to indicate the file path to your main Cardano Node configuration file
+      CONFIG=${environment.variables.NODE_HOME}/config.json
+      echo "Starting cardano-node with IP: $IP"
+      exec ${pkgs.cardano-node}/bin/cardano-node run \
+        --topology "$TOPOLOGY" \
+        --database-path "$DB_PATH" \
+        --socket-path "$SOCKET_PATH" \
+        --host-addr "$HOSTADDR" \
+        --port "$PORT" \
+        --config "$CONFIG"
+    '';
+  };
+  in {
+    description = "Cardano node startup";
+    wantedBy = ["multi-user.target"];
+    # Ensure proper dependency order
+    after = [ "network-online.target" "sops-nix.target" ];
+    wants = [ "network-online.target" ];
+    # Add a restart policy
+    serviceConfig = {
+      Type = "simple";
+      User = "alice";
+      KillSignal = "SIGINT";
+      RestartKillSignal = "SIGINT";
+      TimeoutStopSec = "300s"; # Give it up to 5 minutes to shut down cleanly
+      LimitNOFILE = 32768; # Increase file descriptor limit if necessary
+      Group = "users";
+      ExecStart = "${cardanoStartupScript}/bin/startCardanoNode.sh";
+      Restart = "always";
+      RestartSec = "5s";
+      SyslogIdentifier = "cardano-node";
+    };
+    path = [ pkgs.cardano-node pkgs.iproute2 ];
   };
   
   # Enable the OpenSSH daemon.
