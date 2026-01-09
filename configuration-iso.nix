@@ -32,9 +32,6 @@
     '');
   };
 
-  # (!) WARNING (!) Anyone with access to USB can read this key
-  environment.etc."age-key".source = ./secrets/age-password.key;
-
   sops.defaultSopsFile = ./secrets/keys.enc.yaml;
   # This is using an age key that is expected to already be in the filesystem
   # Note: If you are using Impermanence,

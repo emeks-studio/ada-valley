@@ -44,9 +44,14 @@
       url = "path:./ssh-keys";
       flake = false;
     };
+
+    age-key = {
+      url = "path:./secrets/age-password.key";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, nixos-generators, sops-nix, impermanence, cardano-node, varsFilePath, ssh-keys }:
+  outputs = { self, nixpkgs, nixos-generators, sops-nix, impermanence, cardano-node, varsFilePath, ssh-keys, age-key }:
     let 
       vars = builtins.import varsFilePath;
       system = "x86_64-linux";
@@ -84,6 +89,27 @@
         };
         modules = [
           {  nixpkgs.overlays = nodeOverlays; }
+          ({ config, pkgs, ...}: {
+              environment.etc = pkgs.lib.recursiveUpdate
+                (builtins.listToAttrs (
+                map 
+                  (fileName: {
+                    name = "ssh/authorized_keys.d/${fileName}";
+                    value = {
+                      source = "${ssh-keys}/${fileName}";
+                      mode = "0444";
+                    };
+                  })
+                  (builtins.attrNames (builtins.readDir ssh-keys))
+                ))
+                # (!) WARNING (!) Anyone with access to the .iso/USB can read this key
+                {
+                  "age-key" = {
+                    source = "${age-key}";
+                    mode = "0444";
+                  };
+                };
+          })
           impermanence.nixosModules.impermanence
           sops-nix.nixosModules.sops
           # Apply the rest of the config.

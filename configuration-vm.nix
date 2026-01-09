@@ -91,7 +91,6 @@ rec {
   # the key used for secret decryption (sops.age.keyFile, or the host SSH keys)
   # must be in a persisted directory, loaded early enough during boot.
   sops.age.keyFile = "/persistent${vars.vm.sharedFolder}/age-password.key";
-  # sops.age.keyFile = "/persistent/mk-password.key";
   # If true, this will generate a new key if the key specified above does not exist
   sops.age.generateKey = false;
   # This is the actual specification of the secrets.
