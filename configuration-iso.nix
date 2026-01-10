@@ -2,20 +2,24 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, vars, configurationPorts, ... }:
+{ config, lib, pkgs, vars, configurationPorts, age-key, ... }:
 
 rec {
-  system.activationScripts.createCardanoNodeWorkingDirectory = {
+  system.activationScripts.preSetupSecretsForUsers = {
     text =''
       printf "creating cardano node working directory\n"
       mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
+      printf "creating secrets directory\n"
+      mkdir -p /persistent/secrets
+      cp ${builtins.toString age-key} /persistent/secrets/age-password.key
     '';
     deps = ["specialfs"]; 
   };
-  system.activationScripts.setupSecretsForUsers.deps = ["createCardanoNodeWorkingDirectory"];
+  system.activationScripts.setupSecretsForUsers.deps = ["preSetupSecretsForUsers"];
 
   system.activationScripts.setupRightOwnershipPublickeys = {
     text = ''
+      # Set ownership for SSH authorized keys
       for file in /etc/ssh/authorized_keys.d/*; do
         user=$(basename "$file" .pub)
         if id "$user" > /dev/null 2>&1; then
@@ -30,6 +34,7 @@ rec {
     hideMounts = true;
     directories = [
       "/${vars.cardanoNode.nodeWorkingDirectoryName}"
+      "/secrets"
     ];
   };
   # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
@@ -77,7 +82,7 @@ rec {
   # Note: If you are using Impermanence,
   # the key used for secret decryption (sops.age.keyFile, or the host SSH keys)
   # must be in a persisted directory, loaded early enough during boot.
-  sops.age.keyFile = "/etc/age-key";
+  sops.age.keyFile = "/persistent/secrets/age-password.key";
   # If true, this will generate a new key if the key specified above does not exist
   sops.age.generateKey = false;
   # This is the actual specification of the secrets.
@@ -104,7 +109,9 @@ rec {
   sops.secrets.alice-password-hash.neededForUsers = true;
   users.users.alice = {
     isNormalUser = true;
+    uid = 1000;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+    # password = "123";
     hashedPasswordFile = config.sops.secrets.alice-password-hash.path;
     packages = with pkgs; [
       tree

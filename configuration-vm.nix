@@ -17,6 +17,7 @@ rec {
 
   system.activationScripts.setupRightOwnershipPublickeys = {
     text = ''
+      # Set ownership for SSH authorized keys
       for file in /etc/ssh/authorized_keys.d/*; do
         user=$(basename "$file" .pub)
         if id "$user" > /dev/null 2>&1; then
@@ -172,6 +173,7 @@ rec {
   sops.secrets.alice-password-hash.neededForUsers = true;
   users.users.alice = {
     isNormalUser = true;
+    uid = 1000;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     # password = "123";
     hashedPasswordFile = config.sops.secrets.alice-password-hash.path;

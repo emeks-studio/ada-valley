@@ -85,13 +85,12 @@
         system = "${system}";
         format = "iso";
         specialArgs = {
-          inherit vars configurationPorts;
+          inherit vars configurationPorts age-key;
         };
         modules = [
           {  nixpkgs.overlays = nodeOverlays; }
           ({ config, pkgs, ...}: {
-              environment.etc = pkgs.lib.recursiveUpdate
-                (builtins.listToAttrs (
+              environment.etc = builtins.listToAttrs (
                 map 
                   (fileName: {
                     name = "ssh/authorized_keys.d/${fileName}";
@@ -101,14 +100,7 @@
                     };
                   })
                   (builtins.attrNames (builtins.readDir ssh-keys))
-                ))
-                # (!) WARNING (!) Anyone with access to the .iso/USB can read this key
-                {
-                  "age-key" = {
-                    source = "${age-key}";
-                    mode = "0444";
-                  };
-                };
+              );
           })
           impermanence.nixosModules.impermanence
           sops-nix.nixosModules.sops
