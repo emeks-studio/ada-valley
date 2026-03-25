@@ -33,18 +33,6 @@
         "type": "github"
       }
     },
-    "age-key": {
-      "flake": false,
-      "locked": {
-        "path": "./secrets/age-password.key",
-        "type": "path"
-      },
-      "original": {
-        "path": "./secrets/age-password.key",
-        "type": "path"
-      },
-      "parent": []
-    },
     "blst": {
       "flake": false,
       "locked": {
@@ -978,7 +966,6 @@
     },
     "root": {
       "inputs": {
-        "age-key": "age-key",
         "cardano-node": "cardano-node",
         "impermanence": "impermanence",
         "nixos-generators": "nixos-generators",

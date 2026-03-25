@@ -2,16 +2,41 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, vars, configurationPorts, age-key, ... }:
+{ config, lib, pkgs, vars, configurationPorts, ... }:
 
 rec {
+  # Mount point for external key storage (USB drive or virtual disk)
+  # In VirtualBox: attach a second disk/ISO with label "ALICE_KEYS" containing age-password.key
+  # In production: use a USB drive formatted with label "ALICE_KEYS"
+  fileSystems."/mnt/keys" = {
+    device = "/dev/disk/by-label/ALICE_KEYS";
+    fsType = "auto";
+    options = [ "nofail" "ro" ];
+  };
+
   system.activationScripts.preSetupSecretsForUsers = {
     text =''
       printf "creating cardano node working directory\n"
       mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
       printf "creating secrets directory\n"
       mkdir -p /persistent/secrets
-      cp ${builtins.toString age-key} /persistent/secrets/age-password.key
+      
+      # Try to copy age key from mounted key volume
+      KEY_SOURCE="/mnt/keys/age-password.key"
+      KEY_DEST="/persistent/secrets/age-password.key"
+      
+      if [ -f "$KEY_SOURCE" ]; then
+        printf "Found age key on external volume, copying to persistent storage\n"
+        cp "$KEY_SOURCE" "$KEY_DEST"
+        chmod 600 "$KEY_DEST"
+      elif [ ! -f "$KEY_DEST" ]; then
+        printf "WARNING: No age key found!\n"
+        printf "Expected key at: $KEY_SOURCE\n"
+        printf "Please ensure a volume labeled 'ALICE_KEYS' is attached with age-password.key\n"
+        printf "System will continue but sops-encrypted secrets will not be available.\n"
+      else
+        printf "Age key already exists at $KEY_DEST, skipping copy\n"
+      fi
     '';
     deps = ["specialfs"]; 
   };

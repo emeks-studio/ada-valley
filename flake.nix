@@ -44,14 +44,9 @@
       url = "path:./ssh-keys";
       flake = false;
     };
-
-    age-key = {
-      url = "path:./secrets/age-password.key";
-      flake = false;
-    };
   };
 
-  outputs = { self, nixpkgs, nixos-generators, sops-nix, impermanence, cardano-node, varsFilePath, ssh-keys, age-key }:
+  outputs = { self, nixpkgs, nixos-generators, sops-nix, impermanence, cardano-node, varsFilePath, ssh-keys }:
     let 
       vars = builtins.import varsFilePath;
       system = "x86_64-linux";
@@ -85,7 +80,7 @@
         system = "${system}";
         format = "iso";
         specialArgs = {
-          inherit vars configurationPorts age-key;
+          inherit vars configurationPorts;
         };
         modules = [
           {  nixpkgs.overlays = nodeOverlays; }
@@ -175,6 +170,7 @@
           echo "Available commands:"
           echo "  nix build .#bichota-iso --override-input varsFilePath path:./vars.nix         - Build the NixOS .iso"
           echo "  nix build .#bichota-qemu-vm --override-input varsFilePath path:./vars.nix     - Build the NixOS QEMU VM RUNNER"
+          echo "  nix develop .#keys                                                            - Enter shell to build alice-keys disk"
           echo "  nix run .#start-vm                                                            - Run the NixOS VM with QEMU"
           echo "  nix run .#help                                                                - Show this help message"
           echo "  nix run .#show                                                                - Show vm startup command"
@@ -196,6 +192,7 @@
           "
         '';
       };
+
     };
 
     apps.${system} = {
@@ -210,6 +207,33 @@
       show = {
         type = "app";
         program = "${self.packages.${system}.show}/bin/show";
+      };
+    };
+
+    # Development shells
+    devShells.${system} = {
+      # Shell for building alice-keys disk image with user's own keys
+      # Usage: nix develop .#keys
+      keys = pkgs.mkShell {
+        buildInputs = [ pkgs.e2fsprogs pkgs.virtualbox ];
+        shellHook = ''
+          echo "=================================================="
+          echo "Alice Keys Disk Image Build Environment"
+          echo "=================================================="
+          echo ""
+          echo "This shell provides tools for building alice-keys disk image:"
+          echo "  - mkfs.ext4, e2label (from e2fsprogs)"
+          echo "  - VBoxManage (from virtualbox)"
+          echo ""
+          echo "To build the disk image with your age key, run:"
+          echo "  ./build-alice-keys-disk.sh"
+          echo ""
+          echo "WARNING: Only use this for VirtualBox testing!"
+          echo "For production, use a physical USB drive with ext4."
+          echo "See docs/external-keys-setup.md for details."
+          echo ""
+          echo "=================================================="
+        '';
       };
     };
   };
