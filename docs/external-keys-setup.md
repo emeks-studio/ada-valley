@@ -61,7 +61,40 @@ nix build .#bichota-iso --override-input varsFilePath path:./vars.nix
 
 The ISO will be available at `./result/iso/*.iso`
 
-### Step 2: Create and Configure VirtualBox VM
+### Step 2: Install VirtualBox Extension Pack (Required for USB 2.0/3.0)
+
+USB 2.0/3.0 passthrough requires the VirtualBox Extension Pack.
+
+**On NixOS**, add this to your `configuration.nix`:
+```nix
+virtualisation.virtualbox.host.enableExtensionPack = true;
+```
+
+Then rebuild:
+```bash
+sudo nixos-rebuild switch
+```
+
+**On other systems**, download and install from: https://www.virtualbox.org/wiki/Downloads
+
+Verify installation:
+```bash
+VBoxManage list extpacks
+# Should show: Extension Packs: 1
+```
+
+**Add your user to vboxusers group:**
+```bash
+sudo usermod -aG vboxusers $USER
+# Log out and back in for changes to take effect
+```
+
+Verify group membership:
+```bash
+groups | grep vboxusers
+```
+
+### Step 3: Create and Configure VirtualBox VM
 
 1. **Create a new VM** in VirtualBox (Linux, NixOS, 64-bit)
 
@@ -72,14 +105,19 @@ The ISO will be available at `./result/iso/*.iso`
    - Click **OK**
 
 3. **Configure USB** (Settings → USB):
-   - Enable **USB Controller**
+   - Enable **USB Controller** (check the box)
    - Select **USB 2.0 (EHCI) Controller** or **USB 3.0 (xHCI) Controller**
-   - Click the **"Add USB filter"** icon (+ with USB symbol on the right)
+   - Click the **"Add USB filter"** icon (+ with USB symbol on the right side)
    - **Plug in your USB drive** if not already plugged in
-   - Select your USB drive from the device list
+   - Select your USB drive from the dropdown device list
+   - This creates a filter that auto-attaches the USB when the VM starts
    - Click **OK**
 
+   **Note:** USB drives are NOT added through "Storage" settings! The USB passthrough happens through the USB controller and device filters.
+
 4. **Start the VM** with the USB drive plugged in
+   - The USB drive will disappear from your host (VM has exclusive access)
+   - Inside the VM, run `lsblk` to verify the USB appears (e.g., as `/dev/sdb`)
 
 ### Step 3: Verify Key Loading
 
