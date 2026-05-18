@@ -209,32 +209,5 @@
         program = "${self.packages.${system}.show}/bin/show";
       };
     };
-
-    # Development shells
-    devShells.${system} = {
-      # Shell for building alice-keys disk image with user's own keys
-      # Usage: nix develop .#keys
-      keys = pkgs.mkShell {
-        buildInputs = [ pkgs.e2fsprogs pkgs.virtualbox ];
-        shellHook = ''
-          echo "=================================================="
-          echo "Alice Keys Disk Image Build Environment"
-          echo "=================================================="
-          echo ""
-          echo "This shell provides tools for building alice-keys disk image:"
-          echo "  - mkfs.ext4, e2label (from e2fsprogs)"
-          echo "  - VBoxManage (from virtualbox)"
-          echo ""
-          echo "To build the disk image with your age key, run:"
-          echo "  ./build-alice-keys-disk.sh"
-          echo ""
-          echo "WARNING: Only use this for VirtualBox testing!"
-          echo "For production, use a physical USB drive with ext4."
-          echo "See docs/external-keys-setup.md for details."
-          echo ""
-          echo "=================================================="
-        '';
-      };
-    };
   };
 }

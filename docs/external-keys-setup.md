@@ -1,6 +1,6 @@
 # Using External Keys with NixOS ISO
 
-This NixOS ISO configuration is designed to load sensitive keys (specifically the age encryption key for sops-nix) from an external volume rather than embedding them in the ISO image. This provides better security for production deployments while still being testable with VirtualBox.
+This NixOS ISO configuration is designed to load sensitive keys (specifically the age encryption key for sops-nix) from an external USB volume rather than embedding them in the ISO image. This provides better security for production deployments and can be tested realistically with VirtualBox using USB passthrough.
 
 ## How It Works
 
@@ -10,33 +10,50 @@ The system looks for a volume labeled `ALICE_KEYS` containing an `age-password.k
 2. Copy the key to `/persistent/secrets/age-password.key` if found
 3. Continue booting with warnings if not found (sops-encrypted secrets won't be available)
 
+The configuration uses `/dev/disk/by-label/ALICE_KEYS` which automatically detects any block device with that label, whether it's a physical USB drive, VirtualBox USB passthrough, or any other storage device.
+
+## Preparing the USB Drive
+
+**WARNING: Only use NON-PRODUCTION keys for testing!**
+
+### Step 1: Format the USB Drive
+
+1. Insert your USB drive and identify its device path:
+   ```bash
+   lsblk
+   # Look for your USB drive (e.g., /dev/sdb)
+   ```
+
+2. Format with ext4 and set the `ALICE_KEYS` label:
+   ```bash
+   # WARNING: This will erase all data on the partition!
+   sudo mkfs.ext4 -L ALICE_KEYS /dev/sdX1  # Replace X with your device letter
+   ```
+
+3. Mount and copy your age key:
+   ```bash
+   # Create a temporary mount directory
+   MOUNT_DIR=$(mktemp -d)
+   
+   # Mount the USB drive
+   sudo mount /dev/sdX1 "$MOUNT_DIR"
+   
+   # Copy your age key
+   sudo cp /path/to/your/age-password.key "$MOUNT_DIR/"
+   sudo chmod 600 "$MOUNT_DIR/age-password.key"
+   
+   # Unmount when done
+   sudo umount "$MOUNT_DIR"
+   
+   # Clean up the temporary directory
+   rmdir "$MOUNT_DIR"
+   ```
+
+4. Your USB drive is now ready for both testing and production use
+
 ## Testing with VirtualBox
 
-### Step 1: Create the Keys Volume
-
-**WARNING: Only use NON-PRODUCTION keys for this step!**
-
-The keys ISO build process requires you to manually run a script in a Nix development environment. This ensures you consciously choose to include your keys, rather than accidentally embedding production secrets.
-
-Enter the keys build environment:
-
-```bash
-nix develop .#keys
-```
-
-Then run the build script:
-
-```bash
-./build-alice-keys-disk.sh
-```
-
-This will:
-1. Prompt you to confirm the operation
-2. Create `secrets/alice-keys.img` (a virtual disk image) containing your `secrets/age-password.key`
-3. **Warning:** This disk image will contain your key in plaintext - only use for testing!
-4. The disk image is automatically gitignored for security
-
-### Step 2: Build the Main ISO
+### Step 1: Build the NixOS ISO
 
 ```bash
 nix build .#bichota-iso --override-input varsFilePath path:./vars.nix
@@ -44,54 +61,85 @@ nix build .#bichota-iso --override-input varsFilePath path:./vars.nix
 
 The ISO will be available at `./result/iso/*.iso`
 
-### Step 3: Configure VirtualBox VM (Before First Boot)
+### Step 2: Create and Configure VirtualBox VM
 
-1. Create a new VM in VirtualBox
-2. **Before starting the VM**, go to **Settings** → **Storage**
-3. Attach the main NixOS ISO:
+1. **Create a new VM** in VirtualBox (Linux, NixOS, 64-bit)
+
+2. **Configure Storage** (Settings → Storage):
    - Under "Controller: IDE" or "Controller: SATA", click the empty optical drive slot
    - Click the disc icon → **Choose a disk file...**
    - Select `./result/iso/*.iso` (the main NixOS ISO)
-4. Attach the keys disk image:
-   - Click the **"Add hard disk"** icon (+ icon next to Controller)
-   - Click **"Add"** → Select `secrets/alice-keys.img`
-   - Click **"Choose"**
-5. Click **OK** to save settings
-6. **Now start the VM**
+   - Click **OK**
 
-The system will automatically detect the `ALICE_KEYS` volume during boot and copy the key.
+3. **Configure USB** (Settings → USB):
+   - Enable **USB Controller**
+   - Select **USB 2.0 (EHCI) Controller** or **USB 3.0 (xHCI) Controller**
+   - Click the **"Add USB filter"** icon (+ with USB symbol on the right)
+   - **Plug in your USB drive** if not already plugged in
+   - Select your USB drive from the device list
+   - Click **OK**
 
-### Step 4: Verify Key Loading
+4. **Start the VM** with the USB drive plugged in
 
-After the system activates, check the logs:
+### Step 3: Verify Key Loading
+
+After the system boots and activates, check the logs:
 
 ```bash
 journalctl -b | grep "age key"
 ```
 
-You should see: "Found age key on external volume, copying to persistent storage"
+You should see:
+```
+Found age key on external volume, copying to persistent storage
+```
+
+You can also verify the mount:
+```bash
+# Check if USB is detected
+lsblk -o NAME,LABEL,MOUNTPOINT
+
+# Should show something like:
+# sdb1  ALICE_KEYS  /mnt/keys
+
+# Verify the key was copied
+ls -la /persistent/secrets/age-password.key
+```
+
+### Troubleshooting VirtualBox USB Passthrough
+
+**USB device not appearing in VM:**
+- Ensure VirtualBox Extension Pack is installed
+- Verify you're in the `vboxusers` group: `groups | grep vboxusers`
+- Log out and back in after adding yourself to the group
+- Make sure the USB filter is active (should be checked in Settings → USB)
+
+**Permission denied errors:**
+- Check that your user owns the USB device: `ls -la /dev/bus/usb/*/*`
+- Ensure udev rules are correct for your system
+
+**VM won't start with USB filter enabled:**
+- Try removing the USB filter, starting the VM, then attaching USB manually:
+  - VM menu → Devices → USB → Select your device
 
 ## Production Deployment
 
-For production use, create a USB drive with ext4 formatting and the `ALICE_KEYS` label.
+For production use, follow the same USB drive preparation steps above, but with your production age key.
 
-### USB Drive Setup
+### Production USB Drive Setup
 
-1. Format a USB drive with ext4 and set the volume label:
-   ```bash
-   sudo mkfs.ext4 -L ALICE_KEYS /dev/sdX1
-   ```
-2. Mount and copy your key:
-   ```bash
-   sudo mount /dev/sdX1 /mnt
-   sudo cp age-password.key /mnt/
-   sudo chmod 600 /mnt/age-password.key
-   sudo umount /mnt
-   ```
-3. Insert the USB drive before booting the target machine
-4. **Security:** Store the USB drive in a secure location after the system boots and copies the key
+1. Use a dedicated USB drive for production (don't reuse testing drives)
+2. Format with ext4 and label as `ALICE_KEYS` (see "Preparing the USB Drive" above)
+3. Copy your **production** age key to the drive
+4. Insert the USB drive before booting the target machine
+5. **Security:** Remove and store the USB drive in a secure location after the system boots and copies the key
 
-**Note:** The disk image build script (`build-alice-keys-disk.sh`) is intended for VirtualBox testing with non-production keys only. For production, use a removable USB drive as described above.
+### Why USB Drives Work for Both Testing and Production
+
+The NixOS configuration uses device-agnostic mounting via `/dev/disk/by-label/ALICE_KEYS`, which means:
+- The same USB drive works in both physical hardware and VirtualBox (via USB passthrough)
+- No configuration changes needed between testing and production
+- The USB drive appears as a standard block device regardless of environment
 
 ## Security Considerations
 
@@ -101,6 +149,7 @@ For production use, create a USB drive with ext4 formatting and the `ALICE_KEYS`
 - **Physical security**: Keys require physical access to the USB/disk
 - **Auditability**: ISO can be shared/audited without exposing secrets
 - **Revocability**: Remove USB drive after boot to prevent key extraction
+- **Read-only mount**: USB is mounted read-only (`ro`) to prevent tampering
 
 ### What This Approach Does NOT Provide
 
