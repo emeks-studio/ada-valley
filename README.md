@@ -15,7 +15,7 @@ Cardano ADA Stake operator infra.
 
 1. [Shared Folder & SSH Key](docs/setup.md)
 2. [Secrets Management](docs/setup.md#secrets)
-3. [External Keys Setup (ISO/USB)](docs/external-keys-setup.md)
-4. [Network Setup](docs/network.md)
-5. [Package Commands & Build](docs/package.md)
-6. [Cardano Node Usage](docs/node.md)
+3. [Network Setup](docs/network.md)
+4. [Package Commands & Build](docs/package.md)
+5. [Cardano Node Usage](docs/node.md)
+6. [Preparing the USB Drives](docs/usbs-setup.md)

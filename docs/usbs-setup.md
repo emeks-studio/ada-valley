@@ -1,4 +1,4 @@
-# Using External Keys with NixOS ISO
+# Preparing the USB Drives
 
 This NixOS ISO configuration is designed to load sensitive keys (specifically the age encryption key for sops-nix) from an external USB volume rather than embedding them in the ISO image. This provides better security for production deployments and can be tested realistically with VirtualBox using USB passthrough.
 
@@ -12,11 +12,15 @@ The system looks for a volume labeled `ALICE_KEYS` containing an `age-password.k
 
 The configuration uses `/dev/disk/by-label/ALICE_KEYS` which automatically detects any block device with that label, whether it's a physical USB drive, VirtualBox USB passthrough, or any other storage device.
 
-## Preparing the USB Drive
+## Setup
+
+You will need **TWO USB drives** for deployment:
+- **USB Drive 1**: `ALICE_KEYS` - Contains the age encryption key
+- **USB Drive 2**: Bootable ISO - Contains the NixOS live system
 
 **WARNING: Only use NON-PRODUCTION keys for testing!**
 
-### Step 1: Format the USB Drive
+### Step 1: Prepare the ALICE_KEYS USB Drive (Encryption Key)
 
 1. Insert your USB drive and identify its device path:
    ```bash
@@ -49,11 +53,13 @@ The configuration uses `/dev/disk/by-label/ALICE_KEYS` which automatically detec
    rmdir "$MOUNT_DIR"
    ```
 
-4. Your USB drive is now ready for both testing and production use
+4. Your `ALICE_KEYS` USB drive is now ready for both testing and production use
 
-## Testing with VirtualBox
+### Step 2: Create Bootable USB Drive (NixOS Live System)
 
-### Step 1: Build the NixOS ISO
+To boot the ISO on physical hardware, you need to write it to a second USB drive.
+
+#### Build the ISO
 
 ```bash
 nix build .#bichota-iso --override-input varsFilePath path:./vars.nix
@@ -61,7 +67,69 @@ nix build .#bichota-iso --override-input varsFilePath path:./vars.nix
 
 The ISO will be available at `./result/iso/*.iso`
 
-### Step 2: Install VirtualBox Extension Pack (Required for USB 2.0/3.0)
+#### Find Your Second USB Drive
+
+```bash
+lsblk
+# Identify your USB drive (e.g., /dev/sdc)
+# ⚠️  WARNING: Make sure you select the CORRECT device - it will be erased!
+```
+
+#### Unmount the USB Drive (if auto-mounted)
+
+```bash
+# Check if any partitions are mounted
+mount | grep sdX  # Replace X with your device letter
+
+# Unmount all partitions if needed
+sudo umount /dev/sdX1  # Repeat for sdX2, sdX3, etc. if needed
+```
+
+#### Write the ISO to USB
+
+**Method 1: Using `dd` (Traditional method)**
+
+```bash
+# Write the ISO to the USB drive
+sudo dd if=result/iso/nixos-*.iso of=/dev/sdX bs=4M status=progress conv=fsync
+# Replace X with your device letter (e.g., /dev/sdc)
+
+# Important:
+# - Use the whole device (/dev/sdc), NOT a partition (/dev/sdc1)
+# - bs=4M: Block size for faster writing
+# - status=progress: Shows progress during write
+# - conv=fsync: Ensures all data is written before completion
+```
+
+**Method 2: Using `cp` (Simpler, works for UEFI systems)**
+
+```bash
+# Copy the ISO directly to the device
+sudo cp result/iso/nixos-*.iso /dev/sdX
+
+# Ensure all data is written
+sudo sync
+
+# Safely eject
+sudo eject /dev/sdX
+```
+
+#### Verify and Eject
+
+```bash
+# Safely eject the USB drive
+sudo eject /dev/sdX
+```
+
+Your bootable USB drive is now ready! When deploying to physical hardware, plug in **both USB drives**:
+- The `ALICE_KEYS` USB (encryption key)
+- The bootable ISO USB (NixOS system)
+
+## Testing with VirtualBox (Alternative to Physical Hardware)
+
+If you want to test the ISO in a VM before deploying to physical hardware, you can use VirtualBox with USB passthrough. This allows you to test with your `ALICE_KEYS` USB drive just like in production.
+
+#### Install VirtualBox Extension Pack (Required for USB 2.0/3.0)
 
 USB 2.0/3.0 passthrough requires the VirtualBox Extension Pack.
 
@@ -94,7 +162,7 @@ Verify group membership:
 groups | grep vboxusers
 ```
 
-### Step 3: Create and Configure VirtualBox VM
+#### Create and Configure VirtualBox VM
 
 1. **Create a new VM** in VirtualBox (Linux, NixOS, 64-bit)
 
