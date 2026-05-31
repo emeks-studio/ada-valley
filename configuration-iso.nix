@@ -5,63 +5,58 @@
 { config, lib, pkgs, vars, configurationPorts, ... }:
 
 rec {
-  # Boot-time setup: Copy age key from external USB drive in initrd
-  # This happens before system activation and sops-nix secret decryption
-  boot.initrd.postDeviceCommands = lib.mkAfter ''
-    echo "=================================="
-    echo "Checking for ALICE_KEYS volume..."
-    echo "=================================="
-    
-    # Wait for the ALICE_KEYS device to appear (up to 30 seconds)
-    found=0
-    for i in $(seq 1 30); do
-      if [ -e /dev/disk/by-label/ALICE_KEYS ]; then
-        echo "Found ALICE_KEYS volume after $i seconds"
-        found=1
-        break
+  # Mount ALICE_KEYS USB drive at boot (before activation scripts)
+  # Similar to VM's shared folder mount
+  fileSystems."/mnt/keys" = {
+    device = "/dev/disk/by-label/ALICE_KEYS";
+    fsType = "auto";
+    neededForBoot = true;  # Mount in initrd, before activation
+    options = [ "nofail" "ro" ];
+  };
+
+  # Activation script to copy age key from external USB drive
+  # Runs during system activation, after specialfs is set up
+  # At this point, /mnt/keys is already mounted (due to neededForBoot = true)
+  system.activationScripts.copyAgeKeyFromUSB = {
+    text = ''
+      printf "==================================\n"
+      printf "Checking for age key...\n"
+      printf "==================================\n"
+      
+      KEY_SOURCE="/mnt/keys/age-password.key"
+      KEY_DEST="/persistent/secrets/age-password.key"
+      
+      # Check if key already exists from a previous boot
+      if [ -f "$KEY_DEST" ]; then
+        printf "Age key already exists in persistent storage\n"
+        printf "Skipping USB key copy\n"
+      elif [ -f "$KEY_SOURCE" ]; then
+        # Copy the key from the mounted USB drive
+        printf "Found age key on ALICE_KEYS volume\n"
+        printf "Copying age key to persistent storage...\n"
+        mkdir -p /persistent/secrets
+        cp "$KEY_SOURCE" "$KEY_DEST"
+        chmod 600 "$KEY_DEST"
+        printf "Age key copied successfully\n"
+        
+        # Create cardano node working directory
+        mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
+      else
+        printf "WARNING: No age key found!\n"
+        printf "Expected key at: $KEY_SOURCE\n"
+        printf "Please ensure a USB drive labeled 'ALICE_KEYS' is attached with age-password.key\n"
+        printf "System will continue but sops-encrypted secrets will not be available\n"
       fi
-      [ $i -eq 1 ] && echo "Waiting for ALICE_KEYS volume..."
-      sleep 1
-    done
-    
-    if [ $found -eq 0 ]; then
-      echo "ERROR: ALICE_KEYS volume not found after 30 seconds"
-      echo "Please ensure a USB drive labeled 'ALICE_KEYS' is connected"
-      echo "System will continue but sops-encrypted secrets will not be available"
-      exit 0  # Don't fail boot, allow system to continue
-    fi
-    
-    # Mount the key volume temporarily
-    echo "Mounting ALICE_KEYS volume..."
-    mkdir -p /mnt-keys-temp
-    if ! mount -o ro /dev/disk/by-label/ALICE_KEYS /mnt-keys-temp; then
-      echo "ERROR: Failed to mount ALICE_KEYS volume"
-      exit 0
-    fi
-    
-    # Check if the key file exists
-    if [ ! -f /mnt-keys-temp/age-password.key ]; then
-      echo "ERROR: age-password.key not found on ALICE_KEYS volume"
-      umount /mnt-keys-temp
-      exit 0
-    fi
-    
-    # Copy the key to persistent storage
-    echo "Copying age key to persistent storage..."
-    mkdir -p /persistent/secrets
-    cp /mnt-keys-temp/age-password.key /persistent/secrets/age-password.key
-    chmod 600 /persistent/secrets/age-password.key
-    echo "Age key copied successfully"
-    
-    # Create cardano node working directory
-    mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
-    
-    # Cleanup
-    umount /mnt-keys-temp
-    echo "=================================="
-    echo "Key setup complete"
-    echo "=================================="
-  '';
+      
+      printf "==================================\n"
+      printf "Key setup complete\n"
+      printf "==================================\n"
+    '';
+    deps = ["specialfs"];
+  };
+  
+  # Ensure sops-nix runs after we've copied the key
+  system.activationScripts.setupSecretsForUsers.deps = ["copyAgeKeyFromUSB"];
 
   system.activationScripts.setupRightOwnershipPublickeys = {
     text = ''
