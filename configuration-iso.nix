@@ -5,42 +5,63 @@
 { config, lib, pkgs, vars, configurationPorts, ... }:
 
 rec {
-  # Mount point for external key storage (USB drive or virtual disk)
-  # In VirtualBox: attach a second disk/ISO with label "ALICE_KEYS" containing age-password.key
-  # In production: use a USB drive formatted with label "ALICE_KEYS"
-  fileSystems."/mnt/keys" = {
-    device = "/dev/disk/by-label/ALICE_KEYS";
-    fsType = "auto";
-    options = [ "nofail" "ro" ];
-  };
-
-  system.activationScripts.preSetupSecretsForUsers = {
-    text =''
-      printf "creating cardano node working directory\n"
-      mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
-      printf "creating secrets directory\n"
-      mkdir -p /persistent/secrets
-      
-      # Try to copy age key from mounted key volume
-      KEY_SOURCE="/mnt/keys/age-password.key"
-      KEY_DEST="/persistent/secrets/age-password.key"
-      
-      if [ -f "$KEY_SOURCE" ]; then
-        printf "Found age key on external volume, copying to persistent storage\n"
-        cp "$KEY_SOURCE" "$KEY_DEST"
-        chmod 600 "$KEY_DEST"
-      elif [ ! -f "$KEY_DEST" ]; then
-        printf "WARNING: No age key found!\n"
-        printf "Expected key at: $KEY_SOURCE\n"
-        printf "Please ensure a volume labeled 'ALICE_KEYS' is attached with age-password.key\n"
-        printf "System will continue but sops-encrypted secrets will not be available.\n"
-      else
-        printf "Age key already exists at $KEY_DEST, skipping copy\n"
+  # Boot-time setup: Copy age key from external USB drive in initrd
+  # This happens before system activation and sops-nix secret decryption
+  boot.initrd.postDeviceCommands = lib.mkAfter ''
+    echo "=================================="
+    echo "Checking for ALICE_KEYS volume..."
+    echo "=================================="
+    
+    # Wait for the ALICE_KEYS device to appear (up to 30 seconds)
+    found=0
+    for i in $(seq 1 30); do
+      if [ -e /dev/disk/by-label/ALICE_KEYS ]; then
+        echo "Found ALICE_KEYS volume after $i seconds"
+        found=1
+        break
       fi
-    '';
-    deps = ["specialfs"]; 
-  };
-  system.activationScripts.setupSecretsForUsers.deps = ["preSetupSecretsForUsers"];
+      [ $i -eq 1 ] && echo "Waiting for ALICE_KEYS volume..."
+      sleep 1
+    done
+    
+    if [ $found -eq 0 ]; then
+      echo "ERROR: ALICE_KEYS volume not found after 30 seconds"
+      echo "Please ensure a USB drive labeled 'ALICE_KEYS' is connected"
+      echo "System will continue but sops-encrypted secrets will not be available"
+      exit 0  # Don't fail boot, allow system to continue
+    fi
+    
+    # Mount the key volume temporarily
+    echo "Mounting ALICE_KEYS volume..."
+    mkdir -p /mnt-keys-temp
+    if ! mount -o ro /dev/disk/by-label/ALICE_KEYS /mnt-keys-temp; then
+      echo "ERROR: Failed to mount ALICE_KEYS volume"
+      exit 0
+    fi
+    
+    # Check if the key file exists
+    if [ ! -f /mnt-keys-temp/age-password.key ]; then
+      echo "ERROR: age-password.key not found on ALICE_KEYS volume"
+      umount /mnt-keys-temp
+      exit 0
+    fi
+    
+    # Copy the key to persistent storage
+    echo "Copying age key to persistent storage..."
+    mkdir -p /persistent/secrets
+    cp /mnt-keys-temp/age-password.key /persistent/secrets/age-password.key
+    chmod 600 /persistent/secrets/age-password.key
+    echo "Age key copied successfully"
+    
+    # Create cardano node working directory
+    mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
+    
+    # Cleanup
+    umount /mnt-keys-temp
+    echo "=================================="
+    echo "Key setup complete"
+    echo "=================================="
+  '';
 
   system.activationScripts.setupRightOwnershipPublickeys = {
     text = ''
