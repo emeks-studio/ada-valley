@@ -18,3 +18,4 @@ Cardano ADA Stake operator infra.
 3. [Network Setup](docs/network.md)
 4. [Package Commands & Build](docs/package.md)
 5. [Cardano Node Usage](docs/node.md)
+6. [Preparing the USB Drives](docs/usbs-setup.md)

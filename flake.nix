@@ -23,6 +23,10 @@
   #   After changing the versions in our flake.nix run `nix flake update` to update the lock file.
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixos-generators = {
+      url = "github:nix-community/nixos-generators";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     sops-nix.url = "github:Mic92/sops-nix";
     impermanence.url = "github:nix-community/impermanence";
 
@@ -42,7 +46,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, sops-nix, impermanence, cardano-node, varsFilePath, ssh-keys }:
+  outputs = { self, nixpkgs, nixos-generators, sops-nix, impermanence, cardano-node, varsFilePath, ssh-keys }:
     let 
       vars = builtins.import varsFilePath;
       system = "x86_64-linux";
@@ -52,52 +56,89 @@
       configEnv = {
         PORTS = builtins.concatStringsSep " " (map toString configurationPorts);
       };
+      nodeOverlays = [
+        (prev: final: {
+          cardano-cli = cardano-node.packages.${final.system}.cardano-cli;
+          cardano-node = cardano-node.packages.${final.system}.cardano-node;
+        })
+        (import ./overlays/cardano-configs-testnet-preview.nix)
+        (import ./overlays/cardano-configs-testnet-preprod.nix)
+        (import ./overlays/cardano-configs-mainnet.nix)
+        (import ./overlays/grafana-dashboards.nix)
+        (import ./overlays/cardano-auditor.nix { inherit configEnv; })
+      ];
     in {
-    nixosConfigurations = {
-      nixos-vm = nixpkgs.lib.nixosSystem {
-        system = "${system}";
-        specialArgs = { inherit vars configurationPorts; };
-        modules = [ 
-            {  nixpkgs.overlays = [
-                  (prev: final: {
-                    cardano-cli = cardano-node.packages.${final.system}.cardano-cli;
-                    cardano-node = cardano-node.packages.${final.system}.cardano-node;
-                  })
-                  (import ./overlays/cardano-configs-testnet-preview.nix)
-                  (import ./overlays/cardano-configs-testnet-preprod.nix)
-                  (import ./overlays/cardano-configs-mainnet.nix)
-                  (import ./overlays/grafana-dashboards.nix)
-                  (import ./overlays/cardano-auditor.nix { inherit configEnv; })
-              ];
-            }
-            ({ config, pkgs, ...}: {
-                # Move fileSystems and virtualisation to a separate module!
-                fileSystems."${vars.vm.sharedFolder}" = {
-                  device = "hostshared";
-                  neededForBoot = true;
-                  fsType = "9p";
-                  options = [ "trans=virtio" "version=9p2000.L" "cache=mmap" ];
-                };
-                environment.etc = builtins.listToAttrs (
-                  map 
-                    (fileName: {
-                      name = "ssh/authorized_keys.d/${fileName}";
-                      value = {
-                        source = "${ssh-keys}/${fileName}";
-                        mode = "0444";
-                      };
-                    })
-                    (builtins.attrNames (builtins.readDir ssh-keys))
-                );
-            })
-            impermanence.nixosModules.impermanence
-            sops-nix.nixosModules.sops
-            ./configuration.nix 
-        ];
-      };
-    };
 
     packages.${system} = {
+
+      # Note: In order to use this with VirtualBox you need to disable:
+      # sudo modprobe -r kvm_intel 
+      # ^ For Intel CPUs or kvm_amd for AMD CPUs
+      # And in case you want to re-enable it:
+      # sudo modprobe kvm_intel
+      bichota-iso = nixos-generators.nixosGenerate {
+        system = "${system}";
+        format = "iso";
+        specialArgs = {
+          inherit vars configurationPorts;
+        };
+        modules = [
+          {  nixpkgs.overlays = nodeOverlays; }
+          ({ config, pkgs, ...}: {
+              environment.etc = builtins.listToAttrs (
+                map 
+                  (fileName: {
+                    name = "ssh/authorized_keys.d/${fileName}";
+                    value = {
+                      source = "${ssh-keys}/${fileName}";
+                      mode = "0444";
+                    };
+                  })
+                  (builtins.attrNames (builtins.readDir ssh-keys))
+              );
+          })
+          impermanence.nixosModules.impermanence
+          sops-nix.nixosModules.sops
+          # Apply the rest of the config.
+          ./configuration-iso.nix
+        ];
+      };
+
+      bichota-qemu-vm = nixos-generators.nixosGenerate {
+        system = "${system}";
+        format = "vm"; # only used as a qemu-kvm runner
+        specialArgs = {
+          inherit vars configurationPorts;
+        };
+        modules = [
+          {  nixpkgs.overlays = nodeOverlays; }
+          ({ config, pkgs, ...}: {
+              # Move fileSystems and virtualisation to a separate module!
+              fileSystems."${vars.vm.sharedFolder}" = {
+                device = "hostshared";
+                neededForBoot = true;
+                fsType = "9p";
+                options = [ "trans=virtio" "version=9p2000.L" "cache=mmap" ];
+              };
+              environment.etc = builtins.listToAttrs (
+                map 
+                  (fileName: {
+                    name = "ssh/authorized_keys.d/${fileName}";
+                    value = {
+                      source = "${ssh-keys}/${fileName}";
+                      mode = "0444";
+                    };
+                  })
+                  (builtins.attrNames (builtins.readDir ssh-keys))
+              );
+          })
+          impermanence.nixosModules.impermanence
+          sops-nix.nixosModules.sops
+          # Apply the rest of the config.
+          ./configuration-vm.nix
+        ];
+      };
+
       start-vm = pkgs.writeShellApplication {
         name = "start-vm";
         runtimeInputs = [pkgs.qemu_kvm];
@@ -109,7 +150,7 @@
 
           if [ ! -x "$VM_RUNNER" ] ; then
             echo "Error VM not found"
-            echo "Try to generate it with: nix build .#nixosConfigurations.vm.config.system.build.vm"
+            echo "Try to generate it with: nix build .#bichota-qemu-vm"
             exit 1
           fi
 
@@ -127,10 +168,12 @@
         text = ''
           echo
           echo "Available commands:"
-          echo "  nix build .#nixosConfigurations.nixos-vm.config.system.build.vm --override-input varsFilePath path:./vars.nix     - Build the NixOS VM"
-          echo "  nix run .#start-vm                                                                                                - Run the VM with QEMU"
-          echo "  nix run .#help                                                                                                    - Show this help message"
-          echo "  nix run .#show                                                                                                    - Show vm startup command"
+          echo "  nix build .#bichota-iso --override-input varsFilePath path:./vars.nix         - Build the NixOS .iso"
+          echo "  nix build .#bichota-qemu-vm --override-input varsFilePath path:./vars.nix     - Build the NixOS QEMU VM RUNNER"
+          echo "  nix develop .#keys                                                            - Enter shell to build alice-keys disk"
+          echo "  nix run .#start-vm                                                            - Run the NixOS VM with QEMU"
+          echo "  nix run .#help                                                                - Show this help message"
+          echo "  nix run .#show                                                                - Show vm startup command"
         '';
       };
       show = pkgs.writeShellApplication {
@@ -149,6 +192,7 @@
           "
         '';
       };
+
     };
 
     apps.${system} = {

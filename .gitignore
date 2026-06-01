@@ -2,6 +2,8 @@ hardware-configuration.nix
 result
 secrets/*.hash
 secrets/*.key
+secrets/*.img
+secrets/*.vdi
 nixos.qcow2
 vars.nix
 .amazonq/

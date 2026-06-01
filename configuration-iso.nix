@@ -2,21 +2,62 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, vars, configurationPorts,... }:
+{ config, lib, pkgs, vars, configurationPorts, ... }:
 
 rec {
-  system.activationScripts.mountSharedDirectory = { 
-    text =''
-      printf "mounting shared directory\n"
-      mkdir -p /persistent${vars.vm.sharedFolder}
-      mount -t 9p -o trans=virtio,version=9p2000.L hostshared /persistent${vars.vm.sharedFolder}
-    '';
-    deps = ["specialfs"]; 
+  # Mount ALICE_KEYS USB drive at boot (before activation scripts)
+  # Similar to VM's shared folder mount
+  fileSystems."/mnt/keys" = {
+    device = "/dev/disk/by-label/ALICE_KEYS";
+    fsType = "auto";
+    neededForBoot = true;  # Mount in initrd, before activation
+    options = [ "nofail" "ro" ];
   };
-  system.activationScripts.setupSecretsForUsers.deps = ["mountSharedDirectory"];
+
+  # Activation script to copy age key from external USB drive
+  # Runs during system activation, after specialfs is set up
+  # At this point, /mnt/keys is already mounted (due to neededForBoot = true)
+  system.activationScripts.copyAgeKeyFromUSB = {
+    text = ''
+      printf "==================================\n"
+      printf "Checking for age key...\n"
+      printf "==================================\n"
+      
+      KEY_SOURCE="/mnt/keys/age-password.key"
+      KEY_DEST="/persistent/secrets/age-password.key"
+      
+      # Check if key already exists from a previous boot
+      if [ -f "$KEY_DEST" ]; then
+        printf "Age key already exists in persistent storage\n"
+        printf "Skipping USB key copy\n"
+      elif [ -f "$KEY_SOURCE" ]; then
+        # Copy the key from the mounted USB drive
+        printf "Found age key on ALICE_KEYS volume\n"
+        printf "Copying age key to persistent storage...\n"
+        mkdir -p /persistent/secrets
+        cp "$KEY_SOURCE" "$KEY_DEST"
+        chmod 600 "$KEY_DEST"
+        printf "Age key copied successfully\n"
+      else
+        printf "WARNING: No age key found!\n"
+        printf "Expected key at: $KEY_SOURCE\n"
+        printf "Please ensure a USB drive labeled 'ALICE_KEYS' is attached with age-password.key\n"
+        printf "System will continue but sops-encrypted secrets will not be available\n"
+      fi
+      
+      printf "==================================\n"
+      printf "Key setup complete\n"
+      printf "==================================\n"
+    '';
+    deps = ["specialfs"];
+  };
+  
+  # Ensure sops-nix runs after we've copied the key
+  system.activationScripts.setupSecretsForUsers.deps = ["copyAgeKeyFromUSB"];
 
   system.activationScripts.setupRightOwnershipPublickeys = {
     text = ''
+      # Set ownership for SSH authorized keys
       for file in /etc/ssh/authorized_keys.d/*; do
         user=$(basename "$file" .pub)
         if id "$user" > /dev/null 2>&1; then
@@ -26,17 +67,43 @@ rec {
     '';
   };
 
+  # Setup cardano node directory ownership after users are created
+  # This runs after users exist, so we can use username instead of UID
+  system.activationScripts.setupCardanoNodeDirectory = {
+    text = ''
+      printf "Setting up cardano node working directory ownership...\n"
+      # Check if alice user exists before trying to chown
+      if id alice > /dev/null 2>&1; then
+        mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
+        chown -R alice:users /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
+        printf "Cardano node directory ready for user alice\n"
+      else
+        printf "WARNING: User alice does not exist yet, skipping ownership setup\n"
+      fi
+    '';
+    deps = ["users"];  # Run after users are created
+  };
+
   environment.persistence."/persistent" = {
     enable = true;  # NB: Defaults to true, not needed
     hideMounts = true;
     directories = [
-      "/var/lib/tailscale"
-      "${vars.vm.sharedFolder}"
-      # { directory = "/mnt/share/alice"; user = "alice"; mode = "u=rwx,g=rx,o="; }
+      "/${vars.cardanoNode.nodeWorkingDirectoryName}"
+      "/secrets"
     ];
   };
+  # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
+  # Ref. https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-i-installation/installing-ghc-and-cabal
+  environment.variables = {
+    # Set an environment variable indicating the file path to configuration files and scripts
+    # related to operating your Cardano node
+    NODE_HOME = "/persistent/${vars.cardanoNode.nodeWorkingDirectoryName}";
+    # Set an environment variable indicating the Cardano network cluster where your node runs
+    NODE_CONFIG = vars.cardanoNode.nodeConfig;
+    # Set an environment variable indicating where the Cardano node socket file is located
+    CARDANO_NODE_SOCKET_PATH = "/persistent/${vars.cardanoNode.nodeWorkingDirectoryName}/db/socket";
+  };
 
-  # Can these configs files be modified in subsequents runs? should be moved them into persistent storage?
   environment.etc = {
     cardano-configs-testnet-preview = {
       source = pkgs.cardano-configs-testnet-preview;
@@ -47,18 +114,6 @@ rec {
     cardano-configs-mainnet = {
       source = pkgs.cardano-configs-mainnet;
     };
-  };
-
-  # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
-  # Ref. https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-i-installation/installing-ghc-and-cabal
-  environment.variables = {
-    # Set an environment variable indicating the file path to configuration files and scripts
-    # related to operating your Cardano node
-    NODE_HOME = vars.cardanoNode.nodeHome;
-    # Set an environment variable indicating the Cardano network cluster where your node runs
-    NODE_CONFIG = vars.cardanoNode.nodeConfig;
-    # Set an environment variable indicating where the Cardano node socket file is located
-    CARDANO_NODE_SOCKET_PATH = "${vars.cardanoNode.nodeHome}/db/socket";
   };
 
   # If you perform changes to the dashboard while the VM is running,
@@ -77,21 +132,12 @@ rec {
     '');
   };
 
-  # This tutorial focuses on testing NixOS configurations on a virtual machine. 
-  # Therefore you will remove the reference to:
-  # imports =
-  #   [ # Include the results of the hardware scan.
-  #     ./hardware-configuration.nix
-  #   ];
-
-  # services.openssh.enable = true;
   sops.defaultSopsFile = ./secrets/keys.enc.yaml;
   # This is using an age key that is expected to already be in the filesystem
   # Note: If you are using Impermanence,
   # the key used for secret decryption (sops.age.keyFile, or the host SSH keys)
   # must be in a persisted directory, loaded early enough during boot.
-  sops.age.keyFile = "/persistent${vars.vm.sharedFolder}/age-password.key";
-  # sops.age.keyFile = "/persistent/mk-password.key";
+  sops.age.keyFile = "/persistent/secrets/age-password.key";
   # If true, this will generate a new key if the key specified above does not exist
   sops.age.generateKey = false;
   # This is the actual specification of the secrets.
@@ -113,66 +159,12 @@ rec {
     "net.ipv4.tcp_rmem" = "4096 87380 8388608";
     "net.ipv4.tcp_wmem" = "4096 87380 8388608";
   };
-  
-  # Use the GRUB 2 boot loader.
-  boot.loader.grub.enable = true;
-  # boot.loader.grub.efiSupport = true;
-  # boot.loader.grub.efiInstallAsRemovable = true;
-  # boot.loader.efi.efiSysMountPoint = "/boot/efi";
-  # Define on which hard drive you want to install Grub.
-  # boot.loader.grub.device = "/dev/sda"; # or "nodev" for efi only
-
-  # networking.hostName = "nixos"; # Define your hostname.
-  # Pick only one of the below networking options.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
-  # networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
-
-  # Set your time zone.
-  # time.timeZone = "Europe/Amsterdam";
-
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
-  # Select internationalisation properties.
-  # i18n.defaultLocale = "en_US.UTF-8";
-  # console = {
-  #   font = "Lat2-Terminus16";
-  #   keyMap = "us";
-  #   useXkbConfig = true; # use xkb.options in tty.
-  # };
-
-  # Enable the X11 windowing system.
-  # services.xserver.enable = true;
-
-
-  # Enable the GNOME Desktop Environment.
-  # services.xserver.displayManager.gdm.enable = true;
-  # services.xserver.desktopManager.gnome.enable = true;
-  
-
-  # Configure keymap in X11
-  # services.xserver.xkb.layout = "us";
-  # services.xserver.xkb.options = "eurosign:e,caps:escape";
-
-  # Enable CUPS to print documents.
-  # services.printing.enable = true;
-
-  # Enable sound.
-  # hardware.pulseaudio.enable = true;
-  # OR
-  # services.pipewire = {
-  #   enable = true;
-  #   pulse.enable = true;
-  # };
-
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   sops.secrets.alice-password-hash.neededForUsers = true;
   users.users.alice = {
     isNormalUser = true;
+    uid = 1000;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     # password = "123";
     hashedPasswordFile = config.sops.secrets.alice-password-hash.path;
@@ -183,23 +175,6 @@ rec {
       cardano-auditor
     ];
   };
-
-  # programs.firefox.enable = true;
-
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
-  # environment.systemPackages = with pkgs; [
-  #   vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-  #   wget
-  # ];
-
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
 
   # List of systemd services available
   # cardano-node service is written following the guidelines from:
@@ -283,7 +258,7 @@ rec {
     };
     path = [ pkgs.cardano-node pkgs.iproute2 ];
   };
-
+  
   # Enable the OpenSSH daemon.
   services.openssh = {
     enable = true;
@@ -298,20 +273,6 @@ rec {
     };
   };
 
-  # Enable tailscale
-  sops.secrets.tailscale-auth-key = {
-    owner = "root";
-    group = "root";
-    mode = "0400";
-  };
-
-  services.tailscale = {
-    enable = true;
-    # openFirewall = true;
-    authKeyFile = config.sops.secrets.tailscale-auth-key.path;
-  };
-
-  # Enable fail2ban
   services.fail2ban = {
     enable = true;
     maxretry = 5;
@@ -471,17 +432,12 @@ rec {
     checkReversePath = "loose";
     # Open ports in the firewall.
     allowedTCPPorts = configurationPorts;
-    allowedUDPPorts = [41641];
+    allowedUDPPorts = [];
     # Add your custom iptables rule here
     # extraCommands = "";
     # If you have specific output rules you also need to allow, you can add them to extraCommandsOutput:
     # extraCommandsOutput = "";
   };
-
-  # Copy the NixOS configuration file and link it from the resulting system
-  # (/run/current-system/configuration.nix). This is useful in case you
-  # accidentally delete configuration.nix.
-  # system.copySystemConfiguration = true;
 
   # This option defines the first version of NixOS you have installed on this particular machine,
   # and is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions.
@@ -498,9 +454,7 @@ rec {
   #
   # Do NOT change this value unless you have manually inspected all the changes it would make to your configuration,
   # and migrated your data accordingly.
-  #
+  #nixosConfigurations.vm.config.system.build.vm
   # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
   system.stateVersion = "24.11"; # Did you read the comment?
-
 }
-
