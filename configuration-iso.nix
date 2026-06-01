@@ -38,9 +38,6 @@ rec {
         cp "$KEY_SOURCE" "$KEY_DEST"
         chmod 600 "$KEY_DEST"
         printf "Age key copied successfully\n"
-        
-        # Create cardano node working directory
-        mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
       else
         printf "WARNING: No age key found!\n"
         printf "Expected key at: $KEY_SOURCE\n"
@@ -68,6 +65,23 @@ rec {
         fi
       done
     '';
+  };
+
+  # Setup cardano node directory ownership after users are created
+  # This runs after users exist, so we can use username instead of UID
+  system.activationScripts.setupCardanoNodeDirectory = {
+    text = ''
+      printf "Setting up cardano node working directory ownership...\n"
+      # Check if alice user exists before trying to chown
+      if id alice > /dev/null 2>&1; then
+        mkdir -p /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
+        chown -R alice:users /persistent/${vars.cardanoNode.nodeWorkingDirectoryName}
+        printf "Cardano node directory ready for user alice\n"
+      else
+        printf "WARNING: User alice does not exist yet, skipping ownership setup\n"
+      fi
+    '';
+    deps = ["users"];  # Run after users are created
   };
 
   environment.persistence."/persistent" = {
