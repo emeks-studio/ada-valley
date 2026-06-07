@@ -61,11 +61,19 @@ To boot the ISO on physical hardware, you need to write it to a second USB drive
 
 #### Build the ISO
 
+**For Wired Ethernet (eth1):**
 ```bash
 nix build .#bichota-iso --override-input varsFilePath path:./vars.nix
 ```
 
+**For WiFi Networks (Alternative):**
+```bash
+nix build .#bichota-iso-wifi --override-input varsFilePath path:./vars.nix
+```
+
 The ISO will be available at `./result/iso/*.iso`
+
+**WiFi Configuration:** If you use the WiFi ISO, you'll need to configure your network after booting. See [Configuring WiFi](#configuring-wifi-wifi-iso-only) below.
 
 #### Find Your Second USB Drive
 
@@ -124,6 +132,62 @@ sudo eject /dev/sdX
 Your bootable USB drive is now ready! When deploying to physical hardware, plug in **both USB drives**:
 - The `ALICE_KEYS` USB (encryption key)
 - The bootable ISO USB (NixOS system)
+
+### Configuring WiFi (WiFi ISO Only)
+
+If you built the WiFi-enabled ISO (`bichota-iso-wifi`), you'll need to configure your WiFi network after booting. The WiFi credentials are NOT embedded in the ISO for security reasons.
+
+#### Method 1: Using the Helper Script (Recommended)
+
+After booting from the WiFi ISO, log in as `alice` and run:
+
+```bash
+sudo setup-wifi
+```
+
+The script will:
+1. Scan for available networks
+2. Prompt you for your WiFi SSID (network name)
+3. Prompt you for your WiFi password
+4. Connect automatically and display your IP address
+5. Save the configuration for future boots (persisted across reboots)
+
+**Note:** The cardano-node service starts automatically and waits for network connectivity. Once WiFi connects, the node will start automatically. If you experience any issues, you can manually restart the service:
+
+```bash
+sudo systemctl restart cardano-node
+```
+
+#### Method 2: Manual Configuration with wpa_cli
+
+If you prefer manual configuration:
+
+```bash
+# Scan for available networks
+sudo wpa_cli scan
+sleep 2
+sudo wpa_cli scan_results
+
+# Add a new network
+sudo wpa_cli add_network
+# This returns a network ID (usually 0)
+
+# Configure the network (replace 0 with your network ID if different)
+sudo wpa_cli set_network 0 ssid '"YourNetworkName"'
+sudo wpa_cli set_network 0 psk '"YourPassword"'
+
+# Enable and save the network
+sudo wpa_cli enable_network 0
+sudo wpa_cli save_config
+
+# Check connection status
+sudo wpa_cli status
+
+# Verify you have an IP address
+ip addr show
+```
+
+The WiFi configuration is automatically persisted to `/persistent/etc/wpa_supplicant.conf`, so you only need to configure it once. On subsequent boots, the system will automatically reconnect to your saved network.
 
 ## Testing with VirtualBox (Alternative to Physical Hardware)
 

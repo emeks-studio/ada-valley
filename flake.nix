@@ -104,6 +104,34 @@
         ];
       };
 
+      bichota-iso-wifi = nixos-generators.nixosGenerate {
+        system = "${system}";
+        format = "iso";
+        specialArgs = {
+          inherit vars configurationPorts;
+        };
+        modules = [
+          {  nixpkgs.overlays = nodeOverlays; }
+          ({ config, pkgs, ...}: {
+              environment.etc = builtins.listToAttrs (
+                map 
+                  (fileName: {
+                    name = "ssh/authorized_keys.d/${fileName}";
+                    value = {
+                      source = "${ssh-keys}/${fileName}";
+                      mode = "0444";
+                    };
+                  })
+                  (builtins.attrNames (builtins.readDir ssh-keys))
+              );
+          })
+          impermanence.nixosModules.impermanence
+          sops-nix.nixosModules.sops
+          # Apply the WiFi-enabled config
+          ./configuration-iso-wifi.nix
+        ];
+      };
+
       bichota-qemu-vm = nixos-generators.nixosGenerate {
         system = "${system}";
         format = "vm"; # only used as a qemu-kvm runner
@@ -168,7 +196,8 @@
         text = ''
           echo
           echo "Available commands:"
-          echo "  nix build .#bichota-iso --override-input varsFilePath path:./vars.nix         - Build the NixOS .iso"
+          echo "  nix build .#bichota-iso --override-input varsFilePath path:./vars.nix         - Build the NixOS .iso (wired network)"
+          echo "  nix build .#bichota-iso-wifi --override-input varsFilePath path:./vars.nix    - Build the NixOS .iso (WiFi enabled)"
           echo "  nix build .#bichota-qemu-vm --override-input varsFilePath path:./vars.nix     - Build the NixOS QEMU VM RUNNER"
           echo "  nix develop .#keys                                                            - Enter shell to build alice-keys disk"
           echo "  nix run .#start-vm                                                            - Run the NixOS VM with QEMU"
