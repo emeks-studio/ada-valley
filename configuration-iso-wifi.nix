@@ -156,6 +156,7 @@ rec {
     wirelesstools  # iwconfig, iwlist, etc.
     iw             # modern wireless tools
     wpa_supplicant # for manual WiFi configuration
+    gawk           # text processing tool (used in WiFi scripts)
     
     # Helper script for easy WiFi setup
     (writeShellScriptBin "setup-wifi" ''
@@ -314,7 +315,7 @@ rec {
         fi
         
         # Try wireless interfaces
-        for iface in $(${pkgs.iw}/bin/iw dev | grep Interface | awk '{print $2}'); do
+        for iface in $(${pkgs.iw}/bin/iw dev | grep Interface | ${pkgs.gawk}/bin/awk '{print $2}'); do
           # Check if interface is up and has IP
           if ip link show "$iface" | grep -q "state UP"; then
             local IP
