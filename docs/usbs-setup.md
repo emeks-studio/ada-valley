@@ -353,36 +353,39 @@ sudo nixos-generate-config --root /mnt
 # /mnt/etc/nixos/hardware-configuration.nix
 ```
 
+**Note:** The ISO includes a complete example configuration at `/etc/nixos/configuration-scaffold.nix` which contains all the cardano-node setup, WiFi support, and persistence configuration. We'll use this in the next step.
+
 #### 8. Copy Your Configuration Files
 
 Now we need to replace the generated configuration with your ada-valley configuration:
 
 ```bash
-# Copy your configuration files to the new system
-sudo cp /etc/nixos/configuration-iso.nix /mnt/etc/nixos/ 
-# Or for WiFi:
-sudo cp /etc/nixos/configuration-iso-wifi.nix /mnt/etc/nixos/
+# The ISO includes an example configuration at /etc/nixos/configuration-scaffold.nix
+# This is the full configuration used to build the ISO
 
-# Copy vars.nix (if it exists on ALICE_KEYS or is available)
-sudo cp /path/to/vars.nix /mnt/etc/nixos/
+# Copy it as your base configuration
+sudo cp /etc/nixos/configuration-scaffold.nix /mnt/etc/nixos/
 
-# Create a main configuration.nix that imports your ISO config
+# Edit the main configuration.nix to use it
 sudo tee /mnt/etc/nixos/configuration.nix > /dev/null <<'EOF'
 { config, pkgs, ... }:
 
 {
   imports = [
     ./hardware-configuration.nix
-    ./configuration-iso.nix  # or ./configuration-iso-wifi.nix
+    ./configuration-scaffold.nix  # The ISO's full configuration
   ];
 
-  # Enable bootloader
+  # Enable bootloader for permanent installation
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
   # Note: /persistent is just a directory on the root filesystem (/)
-  # The impermanence module (from configuration-iso.nix) handles persistence
+  # The impermanence module (from configuration-scaffold.nix) handles persistence
   # No separate filesystem mount needed - data persists because root is on disk
+  
+  # Optional: You can override settings from configuration-scaffold.nix here
+  # For example, change network settings, add users, etc.
 }
 EOF
 ```
