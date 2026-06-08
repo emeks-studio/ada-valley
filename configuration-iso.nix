@@ -94,6 +94,12 @@ rec {
   };
   # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
   # Ref. https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-i-installation/installing-ghc-and-cabal
+  # Usage:
+  # * Show current systemd environment
+  #     systemctl show-environment
+  # * Set environment for all systemd services
+  #     sudo systemctl set-environment NODE_CONFIG=testnet-preview
+  # ^ Then restart cardano-node.service
   environment.variables = {
     # Set an environment variable indicating the file path to configuration files and scripts
     # related to operating your Cardano node
@@ -181,6 +187,7 @@ rec {
     ];
   };
 
+  # FIXME: We might need to read env variables instead of hardcode current values! 
   # List of systemd services available
   # cardano-node service is written following the guidelines from:
   # https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-ii-configuration/creating-startup-scripts
