@@ -368,6 +368,7 @@ find /nix/store/ -maxdepth 2 -name "*.nix*"
 ```
 ^ from here copy our flake.nix and the configuration-iso-wifi.nix
 ^ Notice that you can remove the previously generated configuration.nix
+^ LAST UPDATE: I copied the whole ada-valley folder, and doing some trials there (probably there will be issues about ssh keys!)
 
 !!!!!!!!!!!!!!!!!! WRONG BASH !!!!!!!!!!!!!!!!!!!
 
