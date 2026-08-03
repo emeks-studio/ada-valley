@@ -353,11 +353,23 @@ sudo nixos-generate-config --root /mnt
 # /mnt/etc/nixos/hardware-configuration.nix
 ```
 
-**Note:** The ISO includes a complete example configuration at `/etc/nixos/configuration-scaffold.nix` which contains all the cardano-node setup, WiFi support, and persistence configuration. We'll use this in the next step.
+**Note:** The ISO includes a complete example configuration at `/etc/nixos/configuration-scaffold.nix` which contains all the cardano-node setup, WiFi support, and persistence configuration. We'll use this in the next step. - CURRENTLY BROKEN!
 
 #### 8. Copy Your Configuration Files
 
 Now we need to replace the generated configuration with your ada-valley configuration:
+
+
+(!) (!) (!) ISSUE: Right now the file is not in /etc/nixos/ 
+
+Instead you need to do:
+```bash
+find /nix/store/ -maxdepth 2 -name "*.nix*"
+```
+^ from here copy our flake.nix and the configuration-iso-wifi.nix
+^ Notice that you can remove the previously generated configuration.nix
+
+!!!!!!!!!!!!!!!!!! WRONG BASH !!!!!!!!!!!!!!!!!!!
 
 ```bash
 # The ISO includes an example configuration at /etc/nixos/configuration-scaffold.nix
@@ -373,7 +385,8 @@ sudo tee /mnt/etc/nixos/configuration.nix > /dev/null <<'EOF'
 {
   imports = [
     ./hardware-configuration.nix
-    ./configuration-scaffold.nix  # The ISO's full configuration
+    # (!) ISO's inherited configuration.
+    ./configuration-scaffold.nix
   ];
 
   # Enable bootloader for permanent installation
@@ -389,12 +402,19 @@ sudo tee /mnt/etc/nixos/configuration.nix > /dev/null <<'EOF'
 }
 EOF
 ```
+* FIXME: vars is not there, 
+1. manually created /mnt/etc/nixos/vars.nix! (didn't work)
+2. I ended up hardcoding names for their usages!
 
-#### 9. Install NixOS
+#### 9. Install NixOS (Hasta aca llegue pero esta fallando!)
 
 ```bash
-# Install NixOS to /mnt
-sudo nixos-install
+# Install NixOS to /mnt -- OLD PATH: WRONG!
+sudo nixos-install --option extra-experimental-features flakes
+
+# Install NixOS to /mnt using nix flake (THIS PATH WORKS!)
+
+sudo nixos-install --flake /mnt/etc/nixos/#bichota 
 
 # You'll be prompted to set a root password - set it!
 ```

@@ -122,6 +122,7 @@ rec {
     };
   };
 
+  # FIXME: use system.copySystemConfiguration = true; instead!
   # Include this configuration file in the ISO for reference during installation
   environment.etc."nixos/configuration-scaffold.nix" = {
     text = builtins.readFile ./configuration-wifi.nix;
