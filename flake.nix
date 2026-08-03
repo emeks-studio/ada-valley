@@ -69,6 +69,30 @@
       ];
     in {
 
+    # In the bootable after copy files (flake.nix and configuration-iso.nix) to /mnt/etc/nixos/
+    # sudo nixos-install --flake /mnt/etc/nixos/#bichota
+    nixosConfigurations = {
+      # This configuration can be used for installation with:
+      # sudo nixos-install --flake /mnt/etc/nixos/#bichota
+      bichota = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {
+          inherit vars configurationPorts;
+        };
+        modules = [
+          { nixpkgs.overlays = nodeOverlays; }
+          impermanence.nixosModules.impermanence
+          sops-nix.nixosModules.sops
+          ./configuration-iso-wifi.nix
+          # Override for installation (hardware-configuration.nix must exist)
+          {
+            boot.loader.systemd-boot.enable = true;
+            boot.loader.efi.canTouchEfiVariables = true;
+          }
+        ];
+      };
+    };
+
     packages.${system} = {
 
       # Note: In order to use this with VirtualBox you need to disable:

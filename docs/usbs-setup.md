@@ -125,6 +125,366 @@ Your bootable USB drive is now ready! When deploying to physical hardware, plug 
 - The `ALICE_KEYS` USB (encryption key)
 - The bootable ISO USB (NixOS system)
 
+<<<<<<< Updated upstream
+=======
+### Configuring WiFi (WiFi ISO Only)
+
+If you built the WiFi-enabled ISO (`bichota-iso-wifi`), you'll need to configure your WiFi network after booting. The WiFi credentials are NOT embedded in the ISO for security reasons.
+
+#### Method 1: Using the Helper Script (Recommended)
+
+After booting from the WiFi ISO, log in as `alice` and run:
+
+```bash
+sudo setup-wifi
+```
+
+The script will:
+1. Scan for available networks
+2. Prompt you for your WiFi SSID (network name)
+3. Prompt you for your WiFi password
+4. Connect automatically and display your IP address
+5. Save the configuration for future boots (persisted across reboots)
+
+**Note:** The cardano-node service starts automatically and waits for network connectivity. Once WiFi connects, the node will start automatically. If you experience any issues, you can manually restart the service:
+
+```bash
+sudo systemctl restart cardano-node
+```
+
+#### Method 2: Manual Configuration with wpa_cli
+
+If you prefer manual configuration:
+
+```bash
+# Scan for available networks
+sudo wpa_cli scan
+sleep 2
+sudo wpa_cli scan_results
+
+# Add a new network
+sudo wpa_cli add_network
+# This returns a network ID (usually 0)
+
+# Configure the network (replace 0 with your network ID if different)
+sudo wpa_cli set_network 0 ssid '"YourNetworkName"'
+sudo wpa_cli set_network 0 psk '"YourPassword"'
+
+# Enable and save the network
+sudo wpa_cli enable_network 0
+sudo wpa_cli save_config
+
+# Check connection status
+sudo wpa_cli status
+
+# Verify you have an IP address
+ip addr show
+```
+
+The WiFi configuration is automatically persisted to `/persistent/etc/wpa_supplicant.conf`, so you only need to configure it once. On subsequent boots, the system will automatically reconnect to your saved network.
+
+## Installing NixOS to Physical Hardware (Permanent Installation)
+
+This section describes how to perform a **permanent installation** of NixOS to your internal disk. This is the recommended approach for production Cardano nodes.
+
+### Prerequisites
+
+Before installation, ensure you have:
+
+1. **Two USB Drives:**
+   - `ALICE_KEYS` USB drive (with encryption keys)
+   - Bootable ISO USB drive (created in previous steps)
+
+2. **Target Hardware:**
+   - Computer/server with at least 16GB RAM
+   - At least 250GB internal storage (500GB+ recommended for mainnet)
+   - Network connectivity (Ethernet or WiFi)
+   - UEFI boot support (recommended)
+
+3. **Important Warning:**
+   ⚠️ This installation will **format and erase your internal disk**. Back up any important data first!
+
+### Installation Steps
+
+#### 1. Boot from the ISO
+
+**Insert both USB drives:**
+- Plug in the `ALICE_KEYS` USB drive
+- Plug in the bootable ISO USB drive
+
+**Boot from the ISO USB:**
+1. Power on the machine
+2. Enter BIOS/UEFI settings (usually F2, F7, F12, DEL, or ESC during boot)
+3. Set boot priority to boot from the ISO USB drive
+4. Save and exit BIOS/UEFI
+
+#### 2. Initial Setup
+
+After the system boots:
+
+1. **Login as alice** (using the password from your `ALICE_KEYS` USB)
+
+2. **Configure WiFi** (if using WiFi ISO):
+   ```bash
+   sudo setup-wifi
+   ```
+
+3. **Verify network connectivity:**
+   ```bash
+   ping -c 3 google.com
+   ```
+
+#### 3. Inspect Current Disk Layout
+
+Before partitioning, inspect your disk to understand the current layout:
+
+```bash
+# Show all block devices and partitions
+lsblk -f
+
+# Show detailed partition information
+sudo fdisk -l
+
+# Identify your target disk (e.g., /dev/sda, /dev/nvme0n1, etc.)
+```
+
+**Understanding the output:**
+
+- **NTFS partitions** → Windows installation present
+- **ext4/btrfs partitions** → Existing Linux installation
+- **vfat EFI partition** → UEFI boot partition
+
+**Example output:**
+```
+NAME   FSTYPE LABEL       SIZE
+sda                      500G
+├─sda1 vfat   EFI         100M
+├─sda2 ntfs   Windows     200G
+└─sda3 ext4   OldLinux    200G
+```
+
+⚠️ **Identify your target disk** (e.g., `/dev/sda`) - all data on this disk will be erased!
+
+#### 4. Partition the Disk
+
+We'll create a simple partition layout with EFI boot partition and root partition.
+
+**For this example, we'll assume `/dev/sda` is your target disk. Replace with your actual disk!**
+
+```bash
+# DANGER: This will erase all data on /dev/sda!
+sudo fdisk /dev/sda
+```
+
+**Inside fdisk, create partitions:**
+
+1. Type `g` to create a new GPT partition table (erases all existing partitions)
+2. Type `n` for new partition (EFI boot partition):
+   - Partition number: `1` (default)
+   - First sector: (default, press Enter)
+   - Last sector: `+512M` (512MB for EFI)
+3. Type `t` to change partition type:
+   - Partition number: `1`
+   - Type: `1` (EFI System)
+4. Type `n` for new partition (root partition):
+   - Partition number: `2` (default)
+   - First sector: (default, press Enter)
+   - Last sector: (default, uses remaining space, press Enter)
+5. Type `w` to write changes and exit
+
+**Verify partitions were created:**
+```bash
+lsblk /dev/sda
+```
+
+You should see:
+```
+NAME   SIZE TYPE
+sda    500G disk
+├─sda1 512M part  ← EFI boot
+└─sda2 499G part  ← Root partition
+```
+
+#### 5. Format the Partitions
+
+```bash
+# Format EFI partition as FAT32
+sudo mkfs.fat -F 32 -n BOOT /dev/sda1
+
+# Format root partition as ext4
+sudo mkfs.ext4 -L nixos /dev/sda2
+```
+
+**For NVMe drives**, partition names are different:
+```bash
+# NVMe example:
+sudo mkfs.fat -F 32 -n BOOT /dev/nvme0n1p1
+sudo mkfs.ext4 -L nixos /dev/nvme0n1p2
+```
+
+#### 6. Mount the Filesystems
+
+```bash
+# Mount root partition
+sudo mount /dev/sda2 /mnt
+
+# Create and mount EFI partition
+sudo mkdir -p /mnt/boot
+sudo mount /dev/sda1 /mnt/boot
+
+# Verify mounts
+lsblk -f | grep -E "sda|mnt"
+```
+
+#### 7. Generate NixOS Configuration
+
+```bash
+# Generate initial configuration
+sudo nixos-generate-config --root /mnt
+
+# This creates:
+# /mnt/etc/nixos/configuration.nix
+# /mnt/etc/nixos/hardware-configuration.nix
+```
+
+**Note:** The ISO includes a complete example configuration at `/etc/nixos/configuration-scaffold.nix` which contains all the cardano-node setup, WiFi support, and persistence configuration. We'll use this in the next step. - CURRENTLY BROKEN!
+
+#### 8. Copy Your Configuration Files
+
+Now we need to replace the generated configuration with your ada-valley configuration:
+
+(!) (!) (!) ISSUE: Right now the file is not in /etc/nixos/ 
+
+Instead you need to do:
+```bash
+find /nix/store/ -maxdepth 2 -name "*.nix*"
+```
+^ from here copy our flake.nix and the configuration-iso-wifi.nix
+^ Notice that you can remove the previously generated configuration.nix
+
+!!!!!!!!!!!!!!!!!! WRONG BASH !!!!!!!!!!!!!!!!!!!
+```bash
+# The ISO includes an example configuration at /etc/nixos/configuration-scaffold.nix
+# This is the full configuration used to build the ISO
+
+# Copy it as your base configuration
+sudo cp /etc/nixos/configuration-scaffold.nix /mnt/etc/nixos/
+
+# Edit the main configuration.nix to use it
+sudo tee /mnt/etc/nixos/configuration.nix > /dev/null <<'EOF'
+{ config, pkgs, ... }:
+
+{
+  imports = [
+    ./hardware-configuration.nix
+    # (!) ISO's inherited configuration.
+    ./configuration-scaffold.nix
+  ];
+
+  # Enable bootloader for permanent installation
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+
+  # Note: /persistent is just a directory on the root filesystem (/)
+  # The impermanence module (from configuration-scaffold.nix) handles persistence
+  # No separate filesystem mount needed - data persists because root is on disk
+  
+  # Optional: You can override settings from configuration-scaffold.nix here
+  # For example, change network settings, add users, etc.
+}
+EOF
+```
+* FIXME: vars is not there, 
+1. manually created /mnt/etc/nixos/vars.nix! (didn't work)
+2. I ended up hardcoding names for their usages!
+
+#### 9. Install NixOS (Hasta aca llegue pero esta fallando!)
+
+```bash
+# Install NixOS to /mnt -- OLD PATH: WRONG!
+sudo nixos-install --option extra-experimental-features flakes
+
+# Install NixOS to /mnt using nix flake (THIS PATH WORKS!)
+
+sudo nixos-install --flake /mnt/etc/nixos/#bichota 
+
+# You'll be prompted to set a root password - set it!
+```
+
+This process will:
+- Install all packages
+- Set up the bootloader
+- Configure the system according to your configuration
+
+**This may take 10-30 minutes depending on your internet connection.**
+
+#### 10. Reboot into New System
+
+```bash
+# Reboot the system
+sudo reboot
+```
+
+**After reboot:**
+1. Remove the ISO USB drive (but keep ALICE_KEYS plugged in)
+2. System should boot from the internal disk
+3. Login as `alice`
+
+#### 11. Post-Installation Verification
+
+After booting into your new permanent installation:
+
+```bash
+# Verify you're running from internal disk (not ISO)
+df -h | grep "^/dev"
+
+# Check that /persistent is mounted to real disk
+findmnt /persistent
+
+# Verify cardano-node is running
+sudo systemctl status cardano-node
+
+# Check cardano-node data directory
+ls /persistent/cardano-node/
+
+# Monitor blockchain sync progress
+cardano-cli query tip --testnet-magic 1
+
+# Verify time synchronization (critical for Cardano)
+chronyc tracking
+
+# Check network connectivity
+ip addr show
+```
+
+#### 12. Ongoing Maintenance
+
+**To update your NixOS configuration:**
+
+1. Edit `/etc/nixos/configuration.nix` or `/etc/nixos/vars.nix`
+2. Rebuild the system:
+   ```bash
+   sudo nixos-rebuild switch
+   ```
+
+**To backup your stake pool keys:**
+- Keep the `ALICE_KEYS` USB drive in a secure location
+- Consider creating encrypted backups of `/persistent/secrets/`
+- Store backups in multiple secure locations
+
+**To monitor your node:**
+```bash
+# View cardano-node logs
+sudo journalctl -u cardano-node -f
+
+# Check disk space (blockchain grows over time)
+df -h /persistent
+
+# Monitor system resources
+htop
+```
+
+>>>>>>> Stashed changes
 ## Testing with VirtualBox (Alternative to Physical Hardware)
 
 If you want to test the ISO in a VM before deploying to physical hardware, you can use VirtualBox with USB passthrough. This allows you to test with your `ALICE_KEYS` USB drive just like in production.

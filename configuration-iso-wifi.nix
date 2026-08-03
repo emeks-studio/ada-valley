@@ -91,6 +91,9 @@ rec {
       "/${vars.cardanoNode.nodeWorkingDirectoryName}"
       "/secrets"
     ];
+    files = [
+      "/etc/wpa_supplicant.conf"
+    ];
   };
   # NODE_HOME, NODE_CONFIG, CARDANO_NODE_SOCKET_PATH are all used/suggested by coincashew installation guides.
   # Ref. https://www.coincashew.com/coins/overview-ada/guide-how-to-build-a-haskell-stakepool-node/part-i-installation/installing-ghc-and-cabal
@@ -116,15 +119,13 @@ rec {
     };
   };
 
-<<<<<<< Updated upstream
-=======
+
   # FIXME: use system.copySystemConfiguration = true; instead!
   # Include this configuration file in the ISO for reference during installation
   environment.etc."nixos/configuration-scaffold.nix" = {
-    text = builtins.readFile ./configuration-wifi.nix;
+    text = builtins.readFile ./configuration-iso-wifi.nix;
   };
 
->>>>>>> Stashed changes
   # If you perform changes to the dashboard while the VM is running,
   # you can copy the dashboard JSON and paste it into proper file in the repository.
   # (!) If you don't do that, you would lose the changes if nixos.qcow2 file is removed.
@@ -140,6 +141,111 @@ rec {
       ignoreregex =
     '');
   };
+
+  # Enable WiFi support with MANUAL configuration only (for security)
+  # NOTE: WiFi credentials are NOT configured declaratively to prevent
+  # embedding passwords in the ISO. Users must configure WiFi manually
+  # after boot using the setup-wifi helper script or wpa_cli commands
+  networking.wireless = {
+    enable = true;
+    # Allow imperative configuration via wpa_cli or wpa_supplicant.conf
+    # This allows users to connect to WiFi manually after boot without
+    # embedding passwords in the ISO
+    userControlled.enable = true;
+  };
+
+  # Add wireless firmware and tools
+  hardware.enableRedistributableFirmware = true;
+  hardware.firmware = with pkgs; [ linux-firmware ];
+
+  # Add WiFi management tools and helper script to system packages
+  environment.systemPackages = with pkgs; [
+    wirelesstools  # iwconfig, iwlist, etc.
+    iw             # modern wireless tools
+    wpa_supplicant # for manual WiFi configuration
+    gawk           # text processing tool (used in WiFi scripts)
+    
+    # Helper script for easy WiFi setup
+    (writeShellScriptBin "setup-wifi" ''
+      #!/usr/bin/env bash
+      set -e
+      
+      echo "=== WiFi Network Setup ==="
+      echo
+      echo "This script will help you connect to a WiFi network."
+      echo
+      
+      # Check if running as root
+      if [ "$EUID" -ne 0 ]; then
+        echo "ERROR: This script must be run as root (use sudo)"
+        exit 1
+      fi
+      
+      # Scan for networks
+      echo "Scanning for available networks..."
+      wpa_cli scan > /dev/null 2>&1
+      sleep 2
+      echo
+      echo "Available networks:"
+      wpa_cli scan_results | grep -v "^bssid" | awk '{print "  - " $5}'
+      echo
+      
+      # Get network name
+      read -p "Enter WiFi network name (SSID): " SSID
+      if [ -z "$SSID" ]; then
+        echo "ERROR: SSID cannot be empty"
+        exit 1
+      fi
+      
+      # Get password
+      read -s -p "Enter WiFi password: " PASSWORD
+      echo
+      if [ -z "$PASSWORD" ]; then
+        echo "ERROR: Password cannot be empty"
+        exit 1
+      fi
+      
+      # Configure network
+      echo
+      echo "Configuring WiFi connection..."
+      NETWORK_ID=$(wpa_cli add_network | tail -1)
+      wpa_cli set_network "$NETWORK_ID" ssid "\"$SSID\"" > /dev/null
+      wpa_cli set_network "$NETWORK_ID" psk "\"$PASSWORD\"" > /dev/null
+      wpa_cli enable_network "$NETWORK_ID" > /dev/null
+      wpa_cli save_config > /dev/null
+      
+      echo "WiFi configuration saved. Waiting for connection..."
+      
+      # Wait for connection
+      for i in {1..30}; do
+        if wpa_cli status | grep -q "wpa_state=COMPLETED"; then
+          echo
+          echo "✓ Successfully connected to $SSID"
+          
+          # Show IP address
+          INTERFACE=$(iw dev | grep Interface | awk '{print $2}' | head -1)
+          IP=$(ip -o -4 addr show dev "$INTERFACE" | grep -oP "(?<=inet\s)\d+(\.\d+){3}" || echo "obtaining...")
+          echo "  Interface: $INTERFACE"
+          echo "  IP Address: $IP"
+          
+          # Check if cardano-node needs restart
+          if systemctl is-active cardano-node > /dev/null 2>&1; then
+            echo
+            echo "Note: cardano-node is running. It should automatically use the WiFi connection."
+            echo "If you experience issues, try: sudo systemctl restart cardano-node"
+          fi
+          
+          exit 0
+        fi
+        sleep 1
+      done
+      
+      echo
+      echo "WARNING: Connection timeout. Please check your password and try again."
+      echo "You can also manually configure using wpa_cli commands."
+      exit 1
+    '')
+  ];
 
   sops.defaultSopsFile = ./secrets/keys.enc.yaml;
   # This is using an age key that is expected to already be in the filesystem
@@ -169,12 +275,12 @@ rec {
     "net.ipv4.tcp_wmem" = "4096 87380 8388608";
   };
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
+  # Define a user account. Don't forget to set a password with 'passwd'.
   sops.secrets.alice-password-hash.neededForUsers = true;
   users.users.alice = {
     isNormalUser = true;
     uid = 1000;
-    extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+    extraGroups = [ "wheel" ]; # Enable 'sudo' for the user.
     # password = "123";
     hashedPasswordFile = config.sops.secrets.alice-password-hash.path;
     packages = with pkgs; [
@@ -198,19 +304,53 @@ rec {
       # Copy config files (if they are not there) from /etc/ according to NODE_CONFIG
       cp -n /etc/cardano-configs-${environment.variables.NODE_CONFIG}/* ${environment.variables.NODE_HOME}/
 
-      # Wait for network interface to be available
-      INTERFACE="eth1"
+      # Detect available network interface (prefer eth1, fallback to WiFi)
+      INTERFACE=""
       RETRY_COUNT=0
-      MAX_RETRIES=30
+      MAX_RETRIES=60  # Increased for WiFi connection time (60 retries * 2 seconds = 2 minutes)
       
-      while ! ip link show $INTERFACE &>/dev/null && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-        echo "Waiting for interface $INTERFACE to be available... ($RETRY_COUNT/$MAX_RETRIES)"
-        sleep 1
+      # Function to find first available interface with IP
+      find_interface() {
+        # Try wired interface first
+        if ip link show eth1 &>/dev/null; then
+          local IP
+          IP=$(${pkgs.iproute2}/bin/ip -o -4 addr show dev eth1 | grep -oP "(?<=inet\s)\d+(\.\d+){3}" || true)
+          if [ -n "$IP" ]; then
+            echo "eth1"
+            return 0
+          fi
+        fi
+        
+        # Try wireless interfaces
+        for iface in $(${pkgs.iw}/bin/iw dev | grep Interface | ${pkgs.gawk}/bin/awk '{print $2}'); do
+          # Check if interface is up and has IP
+          if ip link show "$iface" | grep -q "state UP"; then
+            local IP
+            IP=$(${pkgs.iproute2}/bin/ip -o -4 addr show dev "$iface" | grep -oP "(?<=inet\s)\d+(\.\d+){3}" || true)
+            if [ -n "$IP" ]; then
+              echo "$iface"
+              return 0
+            fi
+          fi
+        done
+        
+        return 1
+      }
+      
+      # Wait for network interface to be available with IP
+      while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        INTERFACE=$(find_interface || true)
+        if [ -n "$INTERFACE" ]; then
+          echo "Found active network interface: $INTERFACE"
+          break
+        fi
+        echo "Waiting for network interface to be available and have IP... ($RETRY_COUNT/$MAX_RETRIES)"
+        sleep 2
         RETRY_COUNT=$((RETRY_COUNT+1))
       done
       
-      if ! ip link show $INTERFACE &>/dev/null; then
-        echo "Interface $INTERFACE not found after waiting. Exiting."
+      if [ -z "$INTERFACE" ]; then
+        echo "No network interface with IP found after waiting. Exiting."
         exit 1
       fi
       
@@ -235,7 +375,7 @@ rec {
       SOCKET_PATH=${environment.variables.CARDANO_NODE_SOCKET_PATH}
       # Set a variable to indicate the file path to your main Cardano Node configuration file
       CONFIG=${environment.variables.NODE_HOME}/config.json
-      echo "Starting cardano-node with IP: $IP"
+      echo "Starting cardano-node with IP: $IP on interface: $INTERFACE"
       exec ${pkgs.cardano-node}/bin/cardano-node run \
         --topology "$TOPOLOGY" \
         --database-path "$DB_PATH" \
@@ -246,10 +386,10 @@ rec {
     '';
   };
   in {
-    description = "Cardano node startup";
+    description = "Cardano node startup (WiFi-enabled)";
     wantedBy = ["multi-user.target"];
-    # Ensure proper dependency order
-    after = [ "network-online.target" "sops-nix.target" ];
+    # Ensure proper dependency order - wait for WiFi if enabled
+    after = [ "network-online.target" "sops-nix.target" "wpa_supplicant.service" ];
     wants = [ "network-online.target" ];
     # Add a restart policy
     serviceConfig = {
@@ -265,7 +405,7 @@ rec {
       RestartSec = "5s";
       SyslogIdentifier = "cardano-node";
     };
-    path = [ pkgs.cardano-node pkgs.iproute2 ];
+    path = [ pkgs.cardano-node pkgs.iproute2 pkgs.iw ];
   };
   
   # Enable the OpenSSH daemon.
