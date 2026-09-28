@@ -119,13 +119,6 @@ rec {
     };
   };
 
-
-  # FIXME: use system.copySystemConfiguration = true; instead!
-  # Include this configuration file in the ISO for reference during installation
-  environment.etc."nixos/configuration-scaffold.nix" = {
-    text = builtins.readFile ./configuration-iso-wifi.nix;
-  };
-
   # If you perform changes to the dashboard while the VM is running,
   # you can copy the dashboard JSON and paste it into proper file in the repository.
   # (!) If you don't do that, you would lose the changes if nixos.qcow2 file is removed.
@@ -160,6 +153,11 @@ rec {
 
   # Add WiFi management tools and helper script to system packages
   environment.systemPackages = with pkgs; [
+    nano
+    git
+    ssh
+    curl
+    util-linux
     wirelesstools  # iwconfig, iwlist, etc.
     iw             # modern wireless tools
     wpa_supplicant # for manual WiFi configuration

@@ -353,14 +353,13 @@ sudo nixos-generate-config --root /mnt
 # /mnt/etc/nixos/hardware-configuration.nix
 ```
 
-**Note:** The ISO includes a complete example configuration at `/etc/nixos/configuration-scaffold.nix` which contains all the cardano-node setup, WiFi support, and persistence configuration. We'll use this in the next step. - CURRENTLY BROKEN!
-
 #### 8. Copy Your Configuration Files
 
 Now we need to replace the generated configuration with your ada-valley configuration:
 
-
-(!) (!) (!) ISSUE: Right now the file is not in /etc/nixos/ 
+```
+sudo git clone https://github.com/yourusername/ada-valley.git /mnt/etc/nixos
+```
 
 Instead you need to do:
 ```bash
