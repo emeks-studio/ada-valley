@@ -69,6 +69,43 @@
       ];
     in {
 
+    # In the bootable after copy files (flake.nix and configuration-iso.nix) to /mnt/etc/nixos/
+    # sudo nixos-install --flake /mnt/etc/nixos/#bichota
+    nixosConfigurations = {
+      # This configuration can be used for installation with:
+      # sudo nixos-install --flake /mnt/etc/nixos/#bichota
+      bichota = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {
+          inherit vars configurationPorts;
+        };
+        modules = [
+          { nixpkgs.overlays = nodeOverlays; }
+          ({ config, pkgs, ...}: {
+              environment.etc = builtins.listToAttrs (
+                map 
+                  (fileName: {
+                    name = "ssh/authorized_keys.d/${fileName}";
+                    value = {
+                      source = "${ssh-keys}/${fileName}";
+                      mode = "0444";
+                    };
+                  })
+                  (builtins.attrNames (builtins.readDir ssh-keys))
+              );
+          })
+          impermanence.nixosModules.impermanence
+          sops-nix.nixosModules.sops
+          ./configuration-iso-wifi.nix
+          /etc/nixos/hardware-configuration.nix
+          {
+            boot.loader.systemd-boot.enable = true;
+            boot.loader.efi.canTouchEfiVariables = true;
+          }
+        ];
+      };
+    };
+
     packages.${system} = {
 
       # Note: In order to use this with VirtualBox you need to disable:
@@ -101,6 +138,34 @@
           sops-nix.nixosModules.sops
           # Apply the rest of the config.
           ./configuration-iso.nix
+        ];
+      };
+
+      bichota-iso-wifi = nixos-generators.nixosGenerate {
+        system = "${system}";
+        format = "iso";
+        specialArgs = {
+          inherit vars configurationPorts;
+        };
+        modules = [
+          {  nixpkgs.overlays = nodeOverlays; }
+          ({ config, pkgs, ...}: {
+              environment.etc = builtins.listToAttrs (
+                map 
+                  (fileName: {
+                    name = "ssh/authorized_keys.d/${fileName}";
+                    value = {
+                      source = "${ssh-keys}/${fileName}";
+                      mode = "0444";
+                    };
+                  })
+                  (builtins.attrNames (builtins.readDir ssh-keys))
+              );
+          })
+          impermanence.nixosModules.impermanence
+          sops-nix.nixosModules.sops
+          # Apply the WiFi-enabled config
+          ./configuration-iso-wifi.nix
         ];
       };
 
@@ -168,12 +233,14 @@
         text = ''
           echo
           echo "Available commands:"
-          echo "  nix build .#bichota-iso --override-input varsFilePath path:./vars.nix         - Build the NixOS .iso"
+          echo "  nix build .#bichota-iso --override-input varsFilePath path:./vars.nix         - Build the NixOS .iso (wired network)"
+          echo "  nix build .#bichota-iso-wifi --override-input varsFilePath path:./vars.nix    - Build the NixOS .iso (WiFi enabled)"
           echo "  nix build .#bichota-qemu-vm --override-input varsFilePath path:./vars.nix     - Build the NixOS QEMU VM RUNNER"
           echo "  nix develop .#keys                                                            - Enter shell to build alice-keys disk"
           echo "  nix run .#start-vm                                                            - Run the NixOS VM with QEMU"
           echo "  nix run .#help                                                                - Show this help message"
           echo "  nix run .#show                                                                - Show vm startup command"
+          echo "  sudo nix run github:emeks-studio/ada-valley[/branch]#install -- /dev/sdX      - Clone that exact branch/rev + install NixOS to disk (run from live ISO)"
         '';
       };
       show = pkgs.writeShellApplication {
@@ -193,6 +260,86 @@
         '';
       };
 
+      # NOTE: This script re-clones the repo into /mnt/etc/nixos even though
+      # Nix already had to fetch the flake to run `nix run .#install` itself.
+      # That's intentional: the flake source Nix used could be an immutable/
+      # read-only store path, but nixos-install needs a real, mutable git
+      # checkout living at /mnt/etc/nixos (which also becomes /etc/nixos on
+      # the installed system, ready for future `nixos-rebuild switch`).
+      #
+      # IMPORTANT: To install from a specific branch, put the branch in the
+      # flake reference itself (this is what actually gets evaluated/run):
+      #   nix run github:emeks-studio/ada-valley/feat/iso-wifi#install -- /dev/sda
+      # The script below then clones that SAME revision (self.rev/self.shortRev
+      # when available) so the installed system matches exactly what you ran.
+      install = pkgs.writeShellApplication {
+        name = "install";
+        runtimeInputs = [pkgs.git pkgs.nixos-install-tools pkgs.util-linux];
+        text = ''
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          # Usage: nix run github:emeks-studio/ada-valley[/branch]#install -- <target-disk>
+          # Example: nix run github:emeks-studio/ada-valley/feat/iso-wifi#install -- /dev/sda
+          # (!) WARNING (!) This will install NixOS to the target disk using
+          # nixosConfigurations.bichota (see flake.nix). It expects to be run
+          # from a live NixOS ISO booted with this flake.
+          # It clones the exact revision this flake was invoked from, so the
+          # branch/commit is determined by the flake ref you used above -
+          # NOT by a script argument (avoids the two sources of truth problem).
+
+          REPO_URL="git@github.com:emeks-studio/ada-valley.git"
+          # self.rev only exists for clean, committed (non-dirty) flake refs
+          # (e.g. github:owner/repo/branch). Falls back to "main" for local
+          # `nix run .#install` dev usage where self.rev is unavailable.
+          REV="${self.rev or "main"}"
+
+          if [ "$#" -lt 1 ]; then
+            echo "Usage: $0 <target-disk>"
+            echo "  <target-disk>  e.g. /dev/sda (informational only, disk must already be partitioned)"
+            echo "This assumes the target disk is ALREADY partitioned and mounted at /mnt"
+            echo "(boot partition at /mnt/boot, if applicable)."
+            echo
+            echo "To install from a specific branch, re-run this command as:"
+            echo "  nix run github:emeks-studio/ada-valley/<branch>#install -- <target-disk>"
+            exit 1
+          fi
+
+          TARGET_DISK="$1"
+
+          if ! mountpoint -q /mnt; then
+            echo "Error: /mnt is not mounted. Partition and mount your target disk first."
+            exit 1
+          fi
+
+          echo "==> Target disk: $TARGET_DISK"
+          echo "==> Cloning $REPO_URL @ $REV into /mnt/etc/nixos ..."
+          rm -rf /mnt/etc/nixos
+          mkdir -p /mnt/etc/nixos
+          git clone --depth 1 --branch "$REV" "$REPO_URL" /mnt/etc/nixos \
+            || git clone "$REPO_URL" /mnt/etc/nixos && git -C /mnt/etc/nixos checkout "$REV"
+
+          echo "==> Generating hardware-configuration.nix ..."
+          nixos-generate-config --root /mnt
+
+          # (!) By default the flake uses vars-template.nix (see varsFilePath input).
+          # If you have your own vars.nix, place it at /mnt/etc/nixos/vars.nix
+          # BEFORE running this script, and it will be used instead via --override-input.
+          INSTALL_FLAGS=()
+          if [ -f /mnt/etc/nixos/vars.nix ]; then
+            echo "==> Found custom vars.nix, overriding varsFilePath input"
+            INSTALL_FLAGS+=(--override-input varsFilePath "path:/mnt/etc/nixos/vars.nix")
+          else
+            echo "WARNING: No /mnt/etc/nixos/vars.nix found."
+            echo "WARNING: Falling back to vars-template.nix defaults (nodeConfig=mainnet)."
+          fi
+
+          echo "==> Installing NixOS using flake #bichota ..."
+          nixos-install --flake /mnt/etc/nixos#bichota "''${INSTALL_FLAGS[@]}"
+
+          echo "==> Installation complete! You can now reboot into your new system."
+        '';
+      };
     };
 
     apps.${system} = {
@@ -207,6 +354,10 @@
       show = {
         type = "app";
         program = "${self.packages.${system}.show}/bin/show";
+      };
+      install = {
+        type = "app";
+        program = "${self.packages.${system}.install}/bin/install";
       };
     };
   };
